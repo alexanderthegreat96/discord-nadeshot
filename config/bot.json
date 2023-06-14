@@ -1,0 +1,13 @@
+{
+  "config": {
+    "bot-command-prefix": "/",
+    "bot-name": "nadeshot-beta",
+    "bot-token": "",
+    "bot-listens-to": "/nade",
+    "bot-description": "Run /nade help for full list of commands",
+    "enable-reset-cooldowns": true,
+    "enable-cooldowns": true,
+    "cooldown-duration": 15,
+    "enable-global-errors" : true
+  }
+}

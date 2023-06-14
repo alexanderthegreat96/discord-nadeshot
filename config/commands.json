@@ -1,0 +1,52 @@
+{
+  "commands": {
+    "NewCommand": {
+      "syntax": "/NewCommand",
+      "description": "Awaiting developer description",
+      "filePath": "NewCommand.py",
+      "authorization": [],
+      "arguments": {}
+    },
+    "dth": {
+      "commands": {
+        "pcTrack": {
+          "syntax": "/dth pc track",
+          "description": "Awaiting developer description",
+          "filePath": "dth/pc/Track.py",
+          "authorization": [],
+          "arguments": {
+            "-u": {
+              "required": true,
+              "hasValue": true
+            }
+          }
+        },
+        "psnTrack": {
+          "syntax": "/dth psn track",
+          "description": "Awaiting developer description",
+          "filePath": "dth/psn/Track.py",
+          "authorization": [],
+          "arguments": {}
+        },
+        "xblTrack": {
+          "syntax": "/dth xbl track",
+          "description": "Awaiting developer description",
+          "filePath": "dth/xbl/Track.py",
+          "authorization": [],
+          "arguments": {}
+        }
+      }
+    },
+    "super": {
+      "commands": {
+        "commandFirstone": {
+          "syntax": "/super command firstOne",
+          "description": "Awaiting developer description",
+          "filePath": "super/command/Firstone.py",
+          "authorization": [],
+          "arguments": {}
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,6 @@
+discord
+discord.py
+numpy
+click
+from-root
+requests
