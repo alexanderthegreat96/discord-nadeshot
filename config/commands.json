@@ -47,6 +47,50 @@
           "arguments": {}
         }
       }
+    },
+    "command": {
+      "commands": {
+        "run": {
+          "syntax": "/command run",
+          "description": "Awaiting developer description",
+          "filePath": "command/Run.py",
+          "authorization": [],
+          "hasValue": true,
+          "arguments": {}
+        }
+      }
+    },
+    "beta": {
+      "syntax": "/beta",
+      "description": "Awaiting developer description",
+      "filePath": "beta.py",
+      "authorization": [],
+      "hasValue": true,
+      "arguments": {}
+    },
+    "alpha": {
+      "commands": {
+        "track": {
+          "syntax": "/alpha track",
+          "description": "Awaiting developer description",
+          "filePath": "alpha/Track.py",
+          "authorization": [],
+          "arguments": {
+            "psn" : {
+              "required": false,
+              "hasValue": true
+            },
+            "uplay" : {
+              "required": false,
+              "hasValue": true
+            },
+            "xbl" : {
+              "required": false,
+              "hasValue": true
+            }
+          }
+        }
+      }
     }
   }
 }

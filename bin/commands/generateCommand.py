@@ -10,14 +10,15 @@ def generate_command_name(command=None):
         command_string = " ".join(command)
         return convert_string_to_camelcase(command_string)
     else:
-        return convert_string_to_camelcase(command)
+        return convert_string_to_camelcase(command[0])
 
 def generate_file_path(command=None,filename=None):
     if(len(command) > 1):
         command.pop(-1)
         return "/".join(command) + "/" + filename + ".py"
     else:
-        return command + "/" + filename + ".py"
+        #return "" + command[0] + "/" + filename + ".py"
+        return filename + ".py"
 def convert_string_to_camelcase(string):
     words = string.split()
     camelcase_words = [words[0].lower()] + [word.title() for word in words[1:]]
@@ -35,6 +36,7 @@ def make_command_array(command_camel_case=None, command_string=None, command_fil
                 "description": "Awaiting developer description",
                 "filePath": command_file_path,
                 "authorization": [],
+                "hasValue": True,
                 "arguments": {}
             }
         }
@@ -61,14 +63,23 @@ def appendCommandInConfig(command='command'):
 
             if("/" in command):
 
+
                 py_file_path = command
                 command_parts = py_file_path.split("/")
                 root_command = command_parts[0]
 
+
+
                 command_class_name = generate_class_name(command_parts)
                 command_name = generate_command_name(command_parts)
+
+
                 command_string = "/" + root_command + " " + " ".join(command_parts)
+
+
                 file_path = root_command + "/" + generate_file_path(command_parts, command_class_name)
+
+
                 command_array = make_command_array(command_name,command_string,file_path)
 
 
@@ -87,6 +98,7 @@ def appendCommandInConfig(command='command'):
                     data["commands"][root_command]={}
                     data["commands"][root_command]["commands"] = {}
                     data["commands"][root_command]["commands"].update(command_array)
+
 
                     try:
                         with open(from_root('config/commands.json'), 'w') as f:
@@ -107,6 +119,7 @@ def appendCommandInConfig(command='command'):
                         "description": "Awaiting developer description",
                         "filePath": file_path,
                         "authorization": [],
+                        "hasValue": True,
                         "arguments": {}
                     }
                 }
@@ -138,7 +151,7 @@ def generateCommand(command=''):
         filePath = os.path.basename(command)
         dirPath = os.path.dirname(command)
 
-        if(not path.exists('commands/' + dirPath + '/' + filePath.capitalize() + '.py')):
+        if(not path.exists('commands/' + dirPath  + "/" +filePath.capitalize() + '.py')):
 
             if not os.path.exists('commands/'+ dirPath):
                 os.makedirs('commands/' + dirPath)
@@ -162,7 +175,7 @@ class """+filePath.capitalize()+""":
         await self.ctx.channel.send("```This is the """+filePath.capitalize()+""" command output within commands folder.```")
     """
 
-            openFile = open('commands/' + dirPath + '/' + filePath.capitalize() + '.py', "w")
+            openFile = open('commands/' + dirPath + "/" + filePath.capitalize() + '.py', "w")
             openFile.write(content)
             openFile.close()
 

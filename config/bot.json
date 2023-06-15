@@ -8,6 +8,7 @@
     "enable-reset-cooldowns": true,
     "enable-cooldowns": true,
     "cooldown-duration": 15,
-    "enable-global-errors" : true
+    "enable-global-errors" : true,
+    "enable-automatic-command-helper": true
   }
 }

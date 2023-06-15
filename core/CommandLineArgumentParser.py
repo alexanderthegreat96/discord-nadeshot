@@ -150,7 +150,7 @@ class CommandLineArgumentParser:
                 converted_list.append(item)
         return converted_list
 
-    def validated_arguments(self, command_input=None, arguments=None):
+    def validate_arguments(self, command_input=None, arguments=None, command_syntax=None):
         errors = []
         argument_assoc = []
         status = True
@@ -159,8 +159,10 @@ class CommandLineArgumentParser:
             input_to_array = command_input.split(" ")
             input_to_array = [element for element in input_to_array if element]
 
-            for argument_key, values in arguments.items():
+            # Handle required arguments
+            # they must all be provided
 
+            for argument_key, values in arguments.items():
                 if ('required' in values and values['required']):
                     if (argument_key in input_to_array):
 
@@ -245,8 +247,134 @@ class CommandLineArgumentParser:
                         status = False
                         errors.append(f"Argument {argument_key} is REQUIRED and must be provided.")
 
+            #handle optional arguments
+            #handle them only if they are provided
+            #this means checking if they have a value
+
+            syntax_to_array = command_syntax.split(" ")
+
+            difference = list(set(input_to_array).symmetric_difference(set(syntax_to_array)))
+
+            last_argument = None
+            if(difference):
+                if(len(difference) > 1):
+                    last_argument = difference[-2]
+                else:
+                    last_argument = difference[0]
+
+            if(last_argument in arguments):
+                arg_data = arguments[last_argument]
+
+                if('hasValue' in arg_data and arg_data['hasValue']):
+                    start_index = input_to_array.index(last_argument)
+                    argument_value_index = start_index + 1
+
+                    if (self.checkIfIndexIsOutOfRange(input_to_array, argument_value_index)):
+
+                        if ('hasValue' in arg_data):
+                            has_value = arg_data.get('hasValue', False)
+
+                            argument_value = input_to_array[argument_value_index]
+                            # Check if the argument value meets the length requirements
+                            if has_value and argument_value:
+
+                                if has_value and 'minLength' not in arg_data \
+                                        and 'maxLength' not in arg_data \
+                                        and argument_value is None and argument_value == " ":
+                                    status = False
+                                    errors.append(f"Argument {last_argument} MUST have a value.")
+                                else:
+                                    if ('minLength' in arg_data):
+                                        min_length = arg_data.get('minLength')
+                                        if min_length is not None and len(argument_value) < min_length:
+                                            status = False
+                                            errors.append(
+                                                f"Argument {last_argument} value is TOO SHORT. Minimum length is {min_length}")
+                                    if ('maxLength' in arg_data):
+                                        max_length = arg_data.get('maxLength')
+                                        if max_length is not None and len(argument_value) > max_length:
+                                            status = False
+                                            errors.append(
+                                                f"Argument {last_argument} value is TOO LONG. Maximum length is {max_length}")
+
+                                    if ('type' in arg_data):
+                                        type = arg_data.get('type')
+                                        if type is not None:
+
+                                            if (type == 'string'):
+                                                if (status):
+                                                    argument_assoc.append({last_argument: argument_value})
+
+                                            elif type == 'boolean':
+                                                if (argument_value not in ['True', 'False', 'true', 'false']):
+                                                    status = False
+                                                    errors.append(
+                                                        f"Argument {last_argument} must be a BOOLEAN. Valid values include: [True, False, true, false]")
+
+                                                else:
+                                                    if (status):
+                                                        argument_assoc.append(
+                                                            {last_argument: self.converToBoolean(argument_value)})
+
+                                            elif type == 'integer':
+                                                convertToInt = self.convertToInteger(argument_value)
+                                                if (convertToInt):
+                                                    if not self.isInteger(convertToInt):
+                                                        status = False
+                                                        errors.append(f"Argument {last_argument} must be an INTEGER")
+                                                    else:
+                                                        if (status):
+                                                            argument_assoc.append({last_argument: convertToInt})
+                                                else:
+                                                    errors.append(f"Argument {last_argument} must be an INTEGER.")
+
+                                            elif type == 'float':
+                                                convertToFloat = self.converToFloat(argument_value)
+                                                if convertToFloat:
+                                                    if not self.isFloat(convertToFloat):
+                                                        status = False
+                                                        errors.append(f"Argument {last_argument} must be a FLOAT")
+                                                    else:
+                                                        if (status):
+                                                            argument_assoc.append({last_argument: convertToFloat})
+                                                else:
+                                                    errors.append(f"Argument {last_argument} must be a FLOAT")
+
+                    else:
+                        status = False
+                        errors.append(f"Argument {last_argument} is provided and must have a VALUE.")
+
+
+
+
         return status, errors, argument_assoc
 
+    def validate_command_input(self, command_input, argument=None):
+        errors = []
+        argument_assoc = []
+        status = True
+
+        if command_input and argument:
+
+            input_to_array = command_input.split(" ")
+            input_to_array = [element for element in input_to_array if element]
+
+            if(argument in input_to_array):
+                start_index = input_to_array.index(argument)
+                argument_value_index = start_index + 1
+
+                if (not self.checkIfIndexIsOutOfRange(input_to_array, argument_value_index)):
+                    errors.append(f"Argument [{argument}] is required and was not provided.")
+                    status = False
+                else:
+                    arg_value = input_to_array[argument_value_index]
+                    if (arg_value is None or arg_value == "" or arg_value == " "):
+                        errors.append(f"Argument [{argument}] is required and MUST have a value.")
+                        status = False
+                    else:
+                        argument_assoc = {argument : arg_value}
+
+        return status, errors , argument_assoc
     def seekCommands(self, commands):
         matching_command = self.find_matching_command(self.input, commands)
 
@@ -258,10 +386,16 @@ class CommandLineArgumentParser:
             authorization = commandData['authorization']
             arguments = commandData['arguments']
 
+
+            if('hasValue' not in commandData):
+                has_value = False
+            else:
+                has_value = commandData['hasValue']
+
             path_explode = file.split("/")
             name = path_explode[-1]
             name = name.replace(".py","")
-
+            
             syntax_args = None
             if arguments:
                 syntax_args = self.command_args_to_string(arguments)
@@ -273,7 +407,18 @@ class CommandLineArgumentParser:
                 else:
                     command_syntax = syntax
 
-            status, errors, args = self.validated_arguments(self.input, arguments)
+            if(not has_value):
+                status, errors, args = self.validate_arguments(self.input, arguments, syntax)
+            else:
+
+                syntax_to_array = syntax.replace("/","").split(" ")
+
+                if(len(syntax_to_array) > 1):
+                    command_arg = syntax_to_array[-1]
+                else:
+                    command_arg = syntax_to_array[0]
+
+                status, errors, args = self.validate_command_input(self.input, command_arg)
 
             if (status and not errors):
                 return {
@@ -284,7 +429,8 @@ class CommandLineArgumentParser:
                     'file': file,
                     'authorization': authorization,
                     'syntax': command_syntax,
-                    'args': args
+                    'args': args,
+                    'hasValue': has_value
                 }
             else:
                 return {
@@ -293,7 +439,8 @@ class CommandLineArgumentParser:
                     'name': name,
                     'description': desc,
                     'syntax': command_syntax,
-                    'errors': errors
+                    'errors': errors,
+                    'hasValue': has_value
                 }
 
         else:
@@ -317,8 +464,13 @@ class CommandLineArgumentParser:
                     syntax = commandData.get('syntax', None)
                     desc = commandData.get('description', None)
                     authorization = commandData.get('authorization')
-                    arguments = commandData.get('arguments')
+                    arguments = commandData.get('arguments', None)
                     file = commandData.get('filePath')
+                    has_value = commandData.get('hasValue', None)
+
+                    if(not has_value):
+                        has_value = False
+
 
                     syntax_args = None
                     if arguments:
@@ -337,7 +489,8 @@ class CommandLineArgumentParser:
                         'desc': desc,
                         'authorization': authorization,
                         'arguments': arguments,
-                        'file': file
+                        'file': file,
+                        'hasValue': has_value
                     })
 
         return data
@@ -391,17 +544,25 @@ class CommandLineArgumentParser:
         if commands:
             for command in commands:
                 if command['command'] is None or command['command'] == "":
-                    errors.append("['syntax'] was not declared")
+                    errors.append("['syntax'] in " + command["name"] + " was not declared")
                     status = False
 
                 if command['desc'] is None or command['desc'] == "":
-                    errors.append("['description'] was not declared or it is empty")
+                    errors.append("['description'] in " + command["name"] + " was not declared or it is empty")
                     status = False
 
                 if command['file'] is None or command['file'] == "":
-                    errors.append("['filePath] was not declared or it is empty")
+                    errors.append("['filePath] in " + command["name"] + " was not declared or it is empty")
                     status = False
 
+                if ('hasValue' not in command or command['hasValue'] is None or command['hasValue'] == ""):
+                    errors.append("['hasValue'] in " + command["name"] + " was not declared or it is empty")
+                    status = False
+                else:
+                    if(command['hasValue'] not in [True,False, "true", "false"]):
+                        errors.append("['hasValue'] in " + command["name"] + " "
+                                                                             "has to be set to either 'true' or 'false'")
+                        status = False
                 if command['arguments'] is not None:
                     arg_errors, arg_status = self.check_args_integrity(command['arguments'])
                     if not arg_status:
@@ -434,6 +595,7 @@ class CommandLineArgumentParser:
                     authorization = commandData.get('authorization')
                     arguments = commandData.get('arguments')
                     file = commandData.get('filePath')
+                    has_value = commandData.get('hasValue', False)
 
                     syntax_args = None
                     if arguments:
@@ -452,7 +614,8 @@ class CommandLineArgumentParser:
                         'desc': desc,
                         'authorization': authorization,
                         'arguments': arguments,
-                        'file' : file
+                        'file' : file,
+                        'hasValue': has_value
                     })
 
         return data

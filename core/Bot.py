@@ -13,7 +13,7 @@ from utils.user import user
 from core.CommandLineArgumentParser import CommandLineArgumentParser
 
 
-class bot():
+class Bot:
     def __init__(self, ):
         self.config = self.botConfig()
         self.bot = commands.Bot(command_prefix=self.config["bot-command-prefix"],
@@ -196,28 +196,33 @@ class bot():
             @self.bot.command(name=commandName, pass_context=True)
             async def item(ctx, *args):
                 if('help' in args):
-                    parser = CommandLineArgumentParser()
-                    helper = parser.build_command_helper()
-                    if helper:
+                    if(self.config['enable-automatic-command-helper'] == True):
 
-                        nadeshotEmbed = discord.Embed(title=self.config['bot-name'],
-                                                      description='Command line helper',
-                                                      color=discord.Color.blue())
-                        nadeshotEmbed.set_footer(text="Powered by Nadeshot BETA")
+                        parser = CommandLineArgumentParser()
+                        helper = parser.build_command_helper()
+                        if helper:
 
-
-                        for item in helper:
-                            name = item['name']
-                            command_str = item['command']
-                            desc = item['desc']
-                            authorization = item['authorization']
-                            arguments = item['arguments']
-
-                            values = desc + "\n" + "```" + command_str + "```\n"
-                            nadeshotEmbed.add_field(name=name, value=values, inline=False)
+                            nadeshotEmbed = discord.Embed(title=self.config['bot-name'],
+                                                          description='Command line helper',
+                                                          color=discord.Color.blue())
+                            nadeshotEmbed.set_footer(text="Powered by Nadeshot BETA")
 
 
-                        await ctx.channel.send(embed=nadeshotEmbed)
+                            for item in helper:
+                                name = item['name']
+                                command_str = item['command']
+                                desc = item['desc']
+                                authorization = item['authorization']
+                                arguments = item['arguments']
+
+                                values = desc + "\n" + "```" + command_str + "```\n"
+                                nadeshotEmbed.add_field(name=name, value=values, inline=False)
+
+
+                            await ctx.channel.send(embed=nadeshotEmbed)
+                    else:
+                        await ctx.channel.send("```Automatic command helper is disabled due to multi-user-type permissions.\n"
+                                               "You could use /whatever-command help. That's where helpers are generally stored.```")
 
 
                 else:

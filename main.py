@@ -5,9 +5,9 @@ __maintainer__ = "alexanderdth"
 __status__ = "stable"
 __name__ = "dth-labs-discord"
 
-from core.bot import bot
+from core.Bot import Bot
 
-system = bot()
+system = Bot()
 commands = system.command_list()
 
 if(commands):
