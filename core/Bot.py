@@ -166,7 +166,6 @@ class Bot:
                 seconds = error.retry_after
                 await ctx.send('Your ability is on cooldown, retry in: <t:{}:R>'.format(int(time.time() + seconds)),
                                delete_after=seconds)
-
             # if isinstance(error, commands.CommandNotFound):  # or discord.ext.commands.errors.CommandNotFound as you wrote
             #     await ctx.send("```Unknown command. Run: [/dth help] for a full list of commands.```")
             # raise error
@@ -275,4 +274,7 @@ class Bot:
 
     def boot(self):
         print(self.config['bot-name'] + ' started running\nawaiting user input...')
-        self.bot.run(self.config['bot-token'])
+        try:
+            self.bot.run(self.config['bot-token'])
+        except Exception as e:
+            print("Bot token: [" + self.config['bot-token'] + "] is invalid. Please check.")

@@ -1,7 +1,6 @@
+#!/usr/bin/python
 import click
-from commands.generateCommand import generateCommand
-from commands.generateCommand import appendCommandInConfig
-
+from commands.CommandGenerator import GenerateCommand
 print(r"""
  __     __   __   __   __   __                __   ___  __        __  ___     __   ___ ___         
 |  \ | /__` /  ` /  \ |__) |  \ __ |\ |  /\  |  \ |__  /__` |__| /  \  |  __ |__) |__   |   /\     
@@ -14,12 +13,11 @@ def commands():
 @click.command()
 @click.option('--name',default='my-command-name',help="Specify the command name")
 @click.argument('command-name')
+
 def generate(name,command_name):
     print('Generating command name: ' + command_name)
-    print(generateCommand(command_name))
-    print(appendCommandInConfig(command_name))
+    generator = GenerateCommand(command_name)
+    generator.save_command()
 
 commands.add_command(generate)
-
-
 commands()

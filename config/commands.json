@@ -1,94 +1,30 @@
 {
   "commands": {
-    "NewCommand": {
-      "syntax": "/NewCommand",
-      "description": "Awaiting developer description",
-      "filePath": "NewCommand.py",
-      "authorization": [],
-      "arguments": {}
-    },
     "dth": {
       "commands": {
-        "pcTrack": {
-          "syntax": "/dth pc track",
+        "VendorsDarkZoneSouth": {
+          "syntax": "/dth vendors dark-zone-south",
           "description": "Awaiting developer description",
-          "filePath": "dth/pc/Track.py",
+          "filePath": "dth/vendors/DarkZoneSouth.py",
           "authorization": [],
-          "arguments": {
-            "-u": {
-              "required": true,
-              "hasValue": true
-            }
-          }
-        },
-        "psnTrack": {
-          "syntax": "/dth psn track",
-          "description": "Awaiting developer description",
-          "filePath": "dth/psn/Track.py",
-          "authorization": [],
+          "hasValue": false,
           "arguments": {}
         },
-        "xblTrack": {
-          "syntax": "/dth xbl track",
+        "VendorsDarkZoneEast": {
+          "syntax": "/dth vendors dark-zone-east",
           "description": "Awaiting developer description",
-          "filePath": "dth/xbl/Track.py",
+          "filePath": "dth/vendors/DarkZoneEast.py",
           "authorization": [],
+          "hasValue": false,
           "arguments": {}
-        }
-      }
-    },
-    "super": {
-      "commands": {
-        "commandFirstone": {
-          "syntax": "/super command firstOne",
+        },
+        "VendorsDarkZoneWest": {
+          "syntax": "/dth vendors dark-zone-west",
           "description": "Awaiting developer description",
-          "filePath": "super/command/Firstone.py",
+          "filePath": "dth/vendors/DarkZoneWest.py",
           "authorization": [],
+          "hasValue": false,
           "arguments": {}
-        }
-      }
-    },
-    "command": {
-      "commands": {
-        "run": {
-          "syntax": "/command run",
-          "description": "Awaiting developer description",
-          "filePath": "command/Run.py",
-          "authorization": [],
-          "hasValue": true,
-          "arguments": {}
-        }
-      }
-    },
-    "beta": {
-      "syntax": "/beta",
-      "description": "Awaiting developer description",
-      "filePath": "beta.py",
-      "authorization": [],
-      "hasValue": true,
-      "arguments": {}
-    },
-    "alpha": {
-      "commands": {
-        "track": {
-          "syntax": "/alpha track",
-          "description": "Awaiting developer description",
-          "filePath": "alpha/Track.py",
-          "authorization": [],
-          "arguments": {
-            "psn" : {
-              "required": false,
-              "hasValue": true
-            },
-            "uplay" : {
-              "required": false,
-              "hasValue": true
-            },
-            "xbl" : {
-              "required": false,
-              "hasValue": true
-            }
-          }
         }
       }
     }
