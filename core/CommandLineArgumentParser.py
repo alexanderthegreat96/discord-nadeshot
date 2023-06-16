@@ -76,10 +76,14 @@ class CommandLineArgumentParser:
 
     def find_matching_command(self, input_command="", commands=None):
         command_matches = []
-        input_command = self.remove_string_with_hyphen(input_command)
+        # dont remember why i implemented this
+        # input_command = self.remove_string_with_hyphen(input_command)
         if (input_command and commands):
             for command_name, command_details in commands.items():
-                syntax = self.remove_string_with_hyphen(command_details["syntax"])
+                # dont remember why i implemented this
+                #syntax = self.remove_string_with_hyphen(command_details["syntax"])
+
+                syntax = command_details["syntax"]
 
                 input_syntax = input_command.split(" ")
                 syntax_to_list = syntax.split(" ")
@@ -384,13 +388,16 @@ class CommandLineArgumentParser:
             desc = commandData['description']
             file = commandData['filePath']
             authorization = commandData['authorization']
-            arguments = commandData['arguments']
-
 
             if('hasValue' not in commandData):
                 has_value = False
             else:
                 has_value = commandData['hasValue']
+
+            if('arguments' not in commandData):
+                arguments = {}
+            else:
+                arguments = commandData['arguments']
 
             path_explode = file.split("/")
             name = path_explode[-1]

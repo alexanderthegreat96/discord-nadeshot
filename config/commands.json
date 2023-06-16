@@ -8,7 +8,12 @@
           "filePath": "dth/vendors/DarkZoneSouth.py",
           "authorization": [],
           "hasValue": false,
-          "arguments": {}
+          "arguments": {
+            "--category": {
+              "required": true,
+              "hasValue": true
+            }
+          }
         },
         "VendorsDarkZoneEast": {
           "syntax": "/dth vendors dark-zone-east",
@@ -24,6 +29,18 @@
           "filePath": "dth/vendors/DarkZoneWest.py",
           "authorization": [],
           "hasValue": false,
+          "arguments": {}
+        }
+      }
+    },
+    "my": {
+      "commands": {
+        "CommandName": {
+          "syntax": "/my command-name",
+          "description": "Awaiting developer description",
+          "filePath": "my/CommandName.py",
+          "authorization": [],
+          "hasValue": true,
           "arguments": {}
         }
       }
