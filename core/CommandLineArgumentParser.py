@@ -368,12 +368,12 @@ class CommandLineArgumentParser:
                 argument_value_index = start_index + 1
 
                 if (not self.checkIfIndexIsOutOfRange(input_to_array, argument_value_index)):
-                    errors.append(f"Argument [{argument}] is required and was not provided.")
+                    errors.append(f"A value is required at the end of the command.")
                     status = False
                 else:
                     arg_value = input_to_array[argument_value_index]
                     if (arg_value is None or arg_value == "" or arg_value == " "):
-                        errors.append(f"Argument [{argument}] is required and MUST have a value.")
+                        errors.append(f"A value is required at the end of the command.")
                         status = False
                     else:
                         argument_assoc = {argument : arg_value}

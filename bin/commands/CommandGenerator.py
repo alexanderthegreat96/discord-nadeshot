@@ -62,7 +62,7 @@ class """ + class_name + """:
                         openFile.close()
                         return {
                             'status': True,
-                            'message': "Command file [" + filePath + ".py] created in [commands/" + dirPath + "]"
+                            'message': "Command file [" + filePath + "] created in [commands/" + dirPath + "]"
                         }
                     except Exception as e:
                         return {

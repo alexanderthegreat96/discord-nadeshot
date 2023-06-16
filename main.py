@@ -3,7 +3,7 @@ __author__ = "alexanderdth"
 __license__ = "MIT"
 __maintainer__ = "alexanderdth"
 __status__ = "stable"
-__name__ = "dth-labs-discord"
+__name__ = "dth-nadeshot-beta"
 
 from core.Bot import Bot
 
