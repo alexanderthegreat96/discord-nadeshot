@@ -138,7 +138,8 @@ class """ + class_name + """:
                     "description": "Awaiting developer description",
                     "filePath": command_file_path,
                     "authorization": [],
-                    "hasValue": True,
+                    "hasValue": False,
+                    "slashCommand": False,
                     "arguments": {}
                 }
             }
@@ -277,7 +278,8 @@ class """ + class_name + """:
                             "description": "Awaiting developer description",
                             "filePath": file_path,
                             "authorization": [],
-                            "hasValue": True,
+                            "hasValue": False,
+                            "slashCommand": False,
                             "arguments": {}
                         }
                     }

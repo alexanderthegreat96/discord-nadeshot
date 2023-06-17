@@ -11,7 +11,18 @@ system = Bot()
 commands = system.command_list()
 
 if(commands):
+
     for command in commands:
-        system.add_commands(command)
+
+        if('slashCommand' not in commands[command]):
+            system.add_commands(command)
+        else:
+            if(commands[command]['slashCommand']):
+                system.add_slash_commands(command)
+        # if('slashCommand' in commands[command]):
+        #     if(command[command]['slashCommand']):
+        #         system.add_slash_commands(command)
+        # else:
+        #     system.add_commands(command)
 system.boot()
 

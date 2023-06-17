@@ -75,6 +75,9 @@ class CommandLineArgumentParser:
         return arg_list
 
     def find_matching_command(self, input_command="", commands=None):
+
+        input_command = input_command.lower()
+
         command_matches = []
         # dont remember why i implemented this
         # input_command = self.remove_string_with_hyphen(input_command)
@@ -83,7 +86,7 @@ class CommandLineArgumentParser:
                 # dont remember why i implemented this
                 #syntax = self.remove_string_with_hyphen(command_details["syntax"])
 
-                syntax = command_details["syntax"]
+                syntax = command_details["syntax"].lower()
 
                 input_syntax = input_command.split(" ")
                 syntax_to_list = syntax.split(" ")
@@ -399,6 +402,11 @@ class CommandLineArgumentParser:
             else:
                 arguments = commandData['arguments']
 
+            if('slashCommand' not in commandData):
+                is_slash = False
+            else:
+                is_slash = commandData['slashCommand']
+
             path_explode = file.split("/")
             name = path_explode[-1]
             name = name.replace(".py","")
@@ -437,7 +445,8 @@ class CommandLineArgumentParser:
                     'authorization': authorization,
                     'syntax': command_syntax,
                     'args': args,
-                    'hasValue': has_value
+                    'hasValue': has_value,
+                    'slashCommand': is_slash
                 }
             else:
                 return {
@@ -447,7 +456,8 @@ class CommandLineArgumentParser:
                     'description': desc,
                     'syntax': command_syntax,
                     'errors': errors,
-                    'hasValue': has_value
+                    'hasValue': has_value,
+                    'slashCommand': is_slash
                 }
 
         else:
@@ -474,6 +484,7 @@ class CommandLineArgumentParser:
                     arguments = commandData.get('arguments', None)
                     file = commandData.get('filePath')
                     has_value = commandData.get('hasValue', None)
+                    is_slash = commandData.get('slashCommand', None)
 
                     if(not has_value):
                         has_value = False
@@ -497,7 +508,8 @@ class CommandLineArgumentParser:
                         'authorization': authorization,
                         'arguments': arguments,
                         'file': file,
-                        'hasValue': has_value
+                        'hasValue': has_value,
+                        'slashCommand': is_slash
                     })
 
         return data
@@ -558,6 +570,15 @@ class CommandLineArgumentParser:
                     errors.append("['description'] in " + command["name"] + " was not declared or it is empty")
                     status = False
 
+                if command['slashCommand'] is None or command['slashCommand'] == "":
+                    errors.append("['slashCommand'] in " + command["name"] + " was not declared or it is empty")
+                    status = False
+                else:
+                    if (command['slashCommand'] not in [True, False, "true", "false"]):
+                        errors.append("['slashCommand'] in " + command["name"] + " "
+                                                                             "has to be set to either 'true' or 'false'")
+                        status = False
+
                 if command['file'] is None or command['file'] == "":
                     errors.append("['filePath] in " + command["name"] + " was not declared or it is empty")
                     status = False
@@ -603,6 +624,7 @@ class CommandLineArgumentParser:
                     arguments = commandData.get('arguments')
                     file = commandData.get('filePath')
                     has_value = commandData.get('hasValue', False)
+                    is_slash = commandData.get('slashCommand', False)
 
                     syntax_args = None
                     if arguments:
@@ -622,7 +644,8 @@ class CommandLineArgumentParser:
                         'authorization': authorization,
                         'arguments': arguments,
                         'file' : file,
-                        'hasValue': has_value
+                        'hasValue': has_value,
+                        'slashCommand': is_slash
                     })
 
         return data
