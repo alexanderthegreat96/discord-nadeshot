@@ -88,10 +88,13 @@ class Bot:
     # dependency injection
 
     def path_import(self, absolute_path):
-        spec = importlib.util.spec_from_file_location(absolute_path, absolute_path)
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-        return module
+        try:
+            spec = importlib.util.spec_from_file_location(absolute_path, absolute_path)
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            return module
+        except Exception as e:
+            return False
 
     def checkIfItemIsNotEmpty(self, item):
         if (item is not None):
@@ -174,9 +177,11 @@ class Bot:
             #     await ctx.send("``` You do not have permissions to execute this command or this channel does not allow it. ```")
             #     raise error
             #
-            # if isinstance(error, commands.CommandInvokeError):
-            #     await ctx.send("``` Something went wrong. Most likely the channel does not allow embedding here. ```")
-            #     raise error
+            if isinstance(error, commands.CommandInvokeError):
+                await ctx.send("```Command invoke issues: " + str(error) + "```")
+
+                if (self.config['enable-global-errors']):
+                    raise error
 
             if (self.config['enable-global-errors']):
                 raise error  # re-raise the error so all the errors will still show up in console
@@ -194,11 +199,11 @@ class Bot:
             @commands.cooldown(1, self.config['cooldown-duration'], commands.BucketType.user)
             @self.bot.command(name=commandName, pass_context=True)
             async def item(ctx, *args):
-                if('help' in args):
+                if('help' in args and self.config['enable-automatic-command-helper']):
                     if(self.config['enable-automatic-command-helper'] == True):
-
                         parser = CommandLineArgumentParser()
                         helper = parser.build_command_helper()
+
                         if helper:
 
                             nadeshotEmbed = discord.Embed(title=self.config['bot-name'],
@@ -228,14 +233,22 @@ class Bot:
                     providedArguments = self.config['bot-command-prefix'] + "" + commandName + " " + " ".join(args)
                     parser = CommandLineArgumentParser(providedArguments)
                     validation = parser.parse()
+                    # if(validation['status']):
+                    #     print(validation['authorization'])
+                    #     print("We are ok")
+                    # else:
+                    #     print("Something went wrong")
+                    if (validation['status']):
 
-
-                    if ('status' in validation and validation['status']):
-
-                        authorization = validation['authorization']
                         inputArguments = validation['args']
 
-                        authorize = self.authorize(ctx, authorization)
+                        authorization = []
+                        authorize = True
+
+                        if(len(validation['authorization'])):
+                            authorization = validation['authorization']
+                            authorize = self.authorize(ctx, authorization)
+
                         if (not authorize):
                             ctx.channel.send("```This command requires special authorization.```")
                         else:
@@ -246,9 +259,9 @@ class Bot:
                                     run = className(self.bot, ctx, args, authorization, inputArguments)
                                     await run.main()
                                 except Exception as e:
-                                    await ctx.channel.send("```Error: " + str(e) + "```")
+                                    await ctx.channel.send("```Error running class: " + str(e) + "```")
                             except Exception as e:
-                                await ctx.channel.send("```Error: " + str(e) + "```")
+                                await ctx.channel.send("```Error importing class: " + str(e) + "```")
                     else:
                         nadeshotEmbed = discord.Embed(title=self.config['bot-name'],
                                                       description='General information',

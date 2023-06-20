@@ -23,13 +23,15 @@ class CommandLineArgumentParser:
             return None
 
     def generateArgumentAssociation(self, args):
-        if (len(args)):
-            args = list(args)
-            generated = {args[i * 2]: args[i * 2 + 1] for i in range(int(len(args) / 2))}
-            generated_values = dict.values(generated)
-            for item in args:
-                if (item not in generated and item not in generated_values):
-                    generated[item] = None
+        if len(args):
+            generated = [{}]
+            for i in range(len(args) - 1):
+                key = args[i]
+                if i + 1 < len(args):
+                    value = args[i + 1]
+                    generated[-1][key] = value
+                    generated.append({})
+            generated[-1][args[-1]] = None
             return generated
         else:
             return None
@@ -161,7 +163,6 @@ class CommandLineArgumentParser:
         errors = []
         argument_assoc = []
         status = True
-
         if command_input and arguments:
             input_to_array = command_input.split(" ")
             input_to_array = [element for element in input_to_array if element]
@@ -205,46 +206,45 @@ class CommandLineArgumentParser:
                                                 status = False
                                                 errors.append(f"Argument {argument_key} value is TOO LONG. Maximum length is {max_length}")
 
-                                        if ('type' in values):
-                                            type = values.get('type')
-                                            if type is not None:
+                                    # start checking types
+                                    if ('type' in values):
+                                        type = values.get('type')
+                                        if type is not None:
+                                            if type == 'boolean':
+                                                if (argument_value not in ['True', 'False', 'true', 'false']):
+                                                    status = False
+                                                    errors.append(
+                                                        f"Argument {argument_key} must be a BOOLEAN. "
+                                                        f"Valid values include: [True, False, true, false]")
+                                                else:
+                                                    argument_assoc.append({argument_key: self.converToBoolean(argument_value)})
 
-                                                if (type == 'string'):
-                                                    if (status):
-                                                        argument_assoc.append({argument_key: argument_value})
-
-                                                elif type == 'boolean':
-                                                    if(argument_value not in ['True', 'False', 'true', 'false']):
+                                            elif type == 'integer':
+                                                convertToInt = self.convertToInteger(argument_value)
+                                                if (convertToInt):
+                                                    if not self.isInteger(convertToInt):
                                                         status = False
-                                                        errors.append(f"Argument {argument_key} must be a BOOLEAN. Valid values include: [True, False, true, false]")
-
+                                                        errors.append(f"Argument {argument_key} must be an INTEGER")
                                                     else:
-                                                        if (status):
-                                                            argument_assoc.append({argument_key: self.converToBoolean(argument_value)})
+                                                       argument_assoc.append({argument_key: convertToInt})
+                                                else:
+                                                    status = False
+                                                    errors.append(f"Argument {argument_key} must be an INTEGER.")
 
-                                                elif type == 'integer':
-                                                    convertToInt = self.convertToInteger(argument_value)
-                                                    if(convertToInt):
-                                                        if not self.isInteger(convertToInt):
-                                                            status = False
-                                                            errors.append(f"Argument {argument_key} must be an INTEGER")
-                                                        else:
-                                                            if (status):
-                                                                argument_assoc.append({argument_key: convertToInt})
-                                                    else:
-                                                        errors.append(f"Argument {argument_key} must be an INTEGER.")
-
-                                                elif type == 'float':
-                                                    convertToFloat = self.converToFloat(argument_value)
-                                                    if convertToFloat:
-                                                        if not self.isFloat(convertToFloat):
-                                                            status = False
-                                                            errors.append(f"Argument {argument_key} must be a FLOAT")
-                                                        else:
-                                                            if (status):
-                                                                argument_assoc.append({argument_key: convertToFloat})
-                                                    else:
+                                            elif type == 'float':
+                                                convertToFloat = self.converToFloat(argument_value)
+                                                if convertToFloat:
+                                                    if not self.isFloat(convertToFloat):
+                                                        status = False
                                                         errors.append(f"Argument {argument_key} must be a FLOAT")
+                                                    else:
+                                                        argument_assoc.append({argument_key: convertToFloat})
+
+                                                else:
+                                                    status = False
+                                                    errors.append(f"Argument {argument_key} must be a FLOAT")
+                                            else:
+                                                argument_assoc.append({argument_key: argument_value})
 
                         else:
                             status = False
@@ -259,25 +259,25 @@ class CommandLineArgumentParser:
             #this means checking if they have a value
 
             syntax_to_array = command_syntax.split(" ")
-
             difference = list(set(input_to_array).symmetric_difference(set(syntax_to_array)))
+
 
             last_argument = None
             if(difference):
+
                 if(len(difference) > 1):
-                    last_argument = difference[-2]
+                    last_argument = input_to_array[-2]
                 else:
-                    last_argument = difference[0]
+                    last_argument = input_to_array[0]
 
             if(last_argument in arguments):
                 arg_data = arguments[last_argument]
+                if('hasValue' in arg_data and arg_data['hasValue'] and 'required' not in arg_data or not arg_data['required']):
 
-                if('hasValue' in arg_data and arg_data['hasValue']):
                     start_index = input_to_array.index(last_argument)
                     argument_value_index = start_index + 1
 
                     if (self.checkIfIndexIsOutOfRange(input_to_array, argument_value_index)):
-
                         if ('hasValue' in arg_data):
                             has_value = arg_data.get('hasValue', False)
 
@@ -285,6 +285,7 @@ class CommandLineArgumentParser:
                             # Check if the argument value meets the length requirements
                             if has_value and argument_value:
 
+                                # start checking string length
                                 if has_value and 'minLength' not in arg_data \
                                         and 'maxLength' not in arg_data \
                                         and argument_value is None and argument_value == " ":
@@ -293,10 +294,12 @@ class CommandLineArgumentParser:
                                 else:
                                     if ('minLength' in arg_data):
                                         min_length = arg_data.get('minLength')
+
                                         if min_length is not None and len(argument_value) < min_length:
                                             status = False
                                             errors.append(
-                                                f"Argument {last_argument} value is TOO SHORT. Minimum length is {min_length}")
+                                                f"Argument {last_argument} value is TOO SHORT. Minimum length has to be equal or higher than {min_length}")
+
                                     if ('maxLength' in arg_data):
                                         max_length = arg_data.get('maxLength')
                                         if max_length is not None and len(argument_value) > max_length:
@@ -304,55 +307,54 @@ class CommandLineArgumentParser:
                                             errors.append(
                                                 f"Argument {last_argument} value is TOO LONG. Maximum length is {max_length}")
 
-                                    if ('type' in arg_data):
-                                        type = arg_data.get('type')
-                                        if type is not None:
+                                #start checking type
+                                if ('type' in arg_data):
+                                    type = arg_data.get('type')
+                                    if type is not None:
+                                        if type == 'boolean':
+                                            if (argument_value not in ['True', 'False', 'true', 'false']):
+                                                status = False
+                                                errors.append(
+                                                    f"Argument {last_argument} must be a BOOLEAN. Valid values include: [True, False, true, false]")
 
-                                            if (type == 'string'):
-                                                if (status):
-                                                    argument_assoc.append({last_argument: argument_value})
+                                            else:
+                                                argument_assoc.append({last_argument: self.converToBoolean(argument_value)})
 
-                                            elif type == 'boolean':
-                                                if (argument_value not in ['True', 'False', 'true', 'false']):
+                                        elif type == 'integer':
+                                            convertToInt = self.convertToInteger(argument_value)
+                                            if (convertToInt):
+                                                if not self.isInteger(convertToInt):
                                                     status = False
-                                                    errors.append(
-                                                        f"Argument {last_argument} must be a BOOLEAN. Valid values include: [True, False, true, false]")
-
+                                                    errors.append(f"Argument {last_argument} must be an INTEGER")
                                                 else:
-                                                    if (status):
-                                                        argument_assoc.append(
-                                                            {last_argument: self.converToBoolean(argument_value)})
+                                                    argument_assoc.append({last_argument: convertToInt})
+                                            else:
+                                                status = False
+                                                errors.append(f"Argument {last_argument} must be an INTEGER.")
 
-                                            elif type == 'integer':
-                                                convertToInt = self.convertToInteger(argument_value)
-                                                if (convertToInt):
-                                                    if not self.isInteger(convertToInt):
-                                                        status = False
-                                                        errors.append(f"Argument {last_argument} must be an INTEGER")
-                                                    else:
-                                                        if (status):
-                                                            argument_assoc.append({last_argument: convertToInt})
-                                                else:
-                                                    errors.append(f"Argument {last_argument} must be an INTEGER.")
-
-                                            elif type == 'float':
-                                                convertToFloat = self.converToFloat(argument_value)
-                                                if convertToFloat:
-                                                    if not self.isFloat(convertToFloat):
-                                                        status = False
-                                                        errors.append(f"Argument {last_argument} must be a FLOAT")
-                                                    else:
-                                                        if (status):
-                                                            argument_assoc.append({last_argument: convertToFloat})
-                                                else:
+                                        elif type == 'float':
+                                            convertToFloat = self.converToFloat(argument_value)
+                                            if convertToFloat:
+                                                if not self.isFloat(convertToFloat):
+                                                    status = False
                                                     errors.append(f"Argument {last_argument} must be a FLOAT")
+                                                else:
+                                                    argument_assoc.append({last_argument: convertToFloat})
+                                            else:
+                                                status = False
+                                                errors.append(f"Argument {last_argument} must be a FLOAT")
+                                        else:
+                                            argument_assoc.append({last_argument: argument_value})
+                                else:
+                                    argument_assoc.append({last_argument: argument_value})
+
 
                     else:
                         status = False
                         errors.append(f"Argument {last_argument} is provided and must have a VALUE.")
 
-
-
+            if(not argument_assoc):
+                argument_assoc = self.generateArgumentAssociation(input_to_array)
 
         return status, errors, argument_assoc
 
@@ -382,6 +384,14 @@ class CommandLineArgumentParser:
                         argument_assoc = {argument : arg_value}
 
         return status, errors , argument_assoc
+
+    def combine_dictionaries(self, list_of_dicts):
+        combined_dict = {}
+        if(list_of_dicts):
+            for dictionary in list_of_dicts:
+                combined_dict.update(dictionary)
+        return combined_dict
+
     def seekCommands(self, commands):
         matching_command = self.find_matching_command(self.input, commands)
 
@@ -444,7 +454,7 @@ class CommandLineArgumentParser:
                     'file': file,
                     'authorization': authorization,
                     'syntax': command_syntax,
-                    'args': args,
+                    'args': self.combine_dictionaries(args),
                     'hasValue': has_value,
                     'slashCommand': is_slash
                 }
@@ -454,6 +464,9 @@ class CommandLineArgumentParser:
                     'code': 200,
                     'name': name,
                     'description': desc,
+                    'file': file,
+                    'authorization': authorization,
+                    'args': None,
                     'syntax': command_syntax,
                     'errors': errors,
                     'hasValue': has_value,
