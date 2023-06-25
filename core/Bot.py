@@ -11,7 +11,7 @@ import sys
 import types
 from utils.user import user
 from core.CommandLineArgumentParser import CommandLineArgumentParser
-
+import traceback
 
 class Bot:
     def __init__(self, ):
@@ -167,7 +167,7 @@ class Bot:
         async def on_command_error(ctx, error):
             if isinstance(error, commands.CommandOnCooldown):
                 seconds = error.retry_after
-                await ctx.send('Your ability is on cooldown, retry in: <t:{}:R>'.format(int(time.time() + seconds)),
+                await ctx.send('Hold on, your ability is on cooldown. Re-run the command in: <t:{}:R>'.format(int(time.time() + seconds)),
                                delete_after=seconds)
             # if isinstance(error, commands.CommandNotFound):  # or discord.ext.commands.errors.CommandNotFound as you wrote
             #     await ctx.send("```Unknown command. Run: [/dth help] for a full list of commands.```")
@@ -178,10 +178,12 @@ class Bot:
             #     raise error
             #
             if isinstance(error, commands.CommandInvokeError):
-                await ctx.send("```Command invoke issues: " + str(error) + "```")
-
                 if (self.config['enable-global-errors']):
+                    await ctx.send("```Command invoke issues: " + str(error) + "```")
                     raise error
+                else:
+                    await ctx.send("```There was an issue when running this command.\n"
+                                   "You may check for issues like: permissions, channel settings```")
 
             if (self.config['enable-global-errors']):
                 raise error  # re-raise the error so all the errors will still show up in console
@@ -233,11 +235,7 @@ class Bot:
                     providedArguments = self.config['bot-command-prefix'] + "" + commandName + " " + " ".join(args)
                     parser = CommandLineArgumentParser(providedArguments)
                     validation = parser.parse()
-                    # if(validation['status']):
-                    #     print(validation['authorization'])
-                    #     print("We are ok")
-                    # else:
-                    #     print("Something went wrong")
+
                     if (validation['status']):
 
                         inputArguments = validation['args']
@@ -259,9 +257,16 @@ class Bot:
                                     run = className(self.bot, ctx, args, authorization, inputArguments)
                                     await run.main()
                                 except Exception as e:
-                                    await ctx.channel.send("```Error running class: " + str(e) + "```")
+                                    if(config['development-mode']):
+                                        await ctx.channel.send("```Error running class: " + str(e) + "\n"
+                                                               + str(traceback.format_exc()) + "```")
+                                    else:
+                                        await ctx.channel.send("```System Error. Contact developer```")
                             except Exception as e:
-                                await ctx.channel.send("```Error importing class: " + str(e) + "```")
+                                if(config['development-mode']):
+                                    await ctx.channel.send("```Error importing class: " + str(e) + "\n" + str(traceback.format_exc()) + "```")
+                                else:
+                                    await ctx.channel.send("```System Error. Contact developer```")
                     else:
                         nadeshotEmbed = discord.Embed(title=self.config['bot-name'],
                                                       description='General information',

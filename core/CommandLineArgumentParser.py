@@ -3,7 +3,17 @@ import re
 
 class CommandLineArgumentParser:
     def __init__(self, commandinput=""):
-        self.input = commandinput
+        self.input = self.process_string(commandinput)
+
+    def process_string(self, input_string):
+        input_string = input_string.lower()
+        pattern = r'\[(.*?)\]'
+        matches = re.findall(pattern, input_string)
+        if(matches):
+            for match in matches:
+                processed_match = match.replace(" ", "_")
+                input_string = input_string.replace(f"[{match}]", processed_match)
+        return input_string
 
     def matchCommand(self, syntax, keyword):
         if (re.search(syntax, keyword)):
@@ -29,7 +39,7 @@ class CommandLineArgumentParser:
                 key = args[i]
                 if i + 1 < len(args):
                     value = args[i + 1]
-                    generated[-1][key] = value
+                    generated[-1][key] = self.wrap_string_with_underscore(value)
                     generated.append({})
             generated[-1][args[-1]] = None
             return generated
@@ -167,6 +177,8 @@ class CommandLineArgumentParser:
             input_to_array = command_input.split(" ")
             input_to_array = [element for element in input_to_array if element]
 
+
+
             # Handle required arguments
             # they must all be provided
 
@@ -244,7 +256,7 @@ class CommandLineArgumentParser:
                                                     status = False
                                                     errors.append(f"Argument {argument_key} must be a FLOAT")
                                             else:
-                                                argument_assoc.append({argument_key: argument_value})
+                                                argument_assoc.append({argument_key: self.wrap_string_with_underscore(argument_value)})
 
                         else:
                             status = False
@@ -344,9 +356,9 @@ class CommandLineArgumentParser:
                                                 status = False
                                                 errors.append(f"Argument {last_argument} must be a FLOAT")
                                         else:
-                                            argument_assoc.append({last_argument: argument_value})
+                                            argument_assoc.append({last_argument: self.wrap_string_with_underscore(argument_value)})
                                 else:
-                                    argument_assoc.append({last_argument: argument_value})
+                                    argument_assoc.append({last_argument: self.wrap_string_with_underscore(argument_value)})
 
 
                     else:
@@ -381,7 +393,7 @@ class CommandLineArgumentParser:
                         errors.append(f"A value is required at the end of the command.")
                         status = False
                     else:
-                        argument_assoc = {argument : arg_value}
+                        argument_assoc = {argument : arg_value.lower()}
 
         return status, errors , argument_assoc
 
@@ -391,6 +403,12 @@ class CommandLineArgumentParser:
             for dictionary in list_of_dicts:
                 combined_dict.update(dictionary)
         return combined_dict
+
+    def wrap_string_with_underscore(self, text):
+        # pattern = r"(\w*_[^_\s]+_\w*)"  # Regular expression pattern to match strings with underscore
+        # wrapped_text = re.sub(pattern, r"[\g<0>]", text)
+        # return wrapped_text
+        return text.lower()
 
     def seekCommands(self, commands):
         matching_command = self.find_matching_command(self.input, commands)

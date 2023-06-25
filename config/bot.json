@@ -9,6 +9,7 @@
     "enable-cooldowns": true,
     "cooldown-duration": 15,
     "enable-global-errors" : true,
-    "enable-automatic-command-helper": true
+    "enable-automatic-command-helper": false,
+    "development-mode": true
   }
 }
