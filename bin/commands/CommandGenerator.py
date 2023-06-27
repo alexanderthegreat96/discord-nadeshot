@@ -140,6 +140,7 @@ class """ + class_name + """:
                     "authorization": [],
                     "hasValue": False,
                     "slashCommand": False,
+                    "middlewares":[],
                     "arguments": {}
                 }
             }
@@ -280,6 +281,7 @@ class """ + class_name + """:
                             "authorization": [],
                             "hasValue": False,
                             "slashCommand": False,
+                            "middlewares": [],
                             "arguments": {}
                         }
                     }

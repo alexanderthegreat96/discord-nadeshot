@@ -435,6 +435,11 @@ class CommandLineArgumentParser:
             else:
                 is_slash = commandData['slashCommand']
 
+            if('middlewares' not in commandData):
+                middlewares = []
+            else:
+                middlewares = commandData['middlewares']
+
             path_explode = file.split("/")
             name = path_explode[-1]
             name = name.replace(".py","")
@@ -474,6 +479,7 @@ class CommandLineArgumentParser:
                     'syntax': command_syntax,
                     'args': self.combine_dictionaries(args),
                     'hasValue': has_value,
+                    'middlewares': middlewares,
                     'slashCommand': is_slash
                 }
             else:
@@ -488,6 +494,7 @@ class CommandLineArgumentParser:
                     'syntax': command_syntax,
                     'errors': errors,
                     'hasValue': has_value,
+                    'middlewares': middlewares,
                     'slashCommand': is_slash
                 }
 
@@ -516,6 +523,7 @@ class CommandLineArgumentParser:
                     file = commandData.get('filePath')
                     has_value = commandData.get('hasValue', None)
                     is_slash = commandData.get('slashCommand', None)
+                    middlewares = commandData.get('middlewares', None)
 
                     if(not has_value):
                         has_value = False
@@ -540,7 +548,8 @@ class CommandLineArgumentParser:
                         'arguments': arguments,
                         'file': file,
                         'hasValue': has_value,
-                        'slashCommand': is_slash
+                        'slashCommand': is_slash,
+                        'middlewares': middlewares
                     })
 
         return data

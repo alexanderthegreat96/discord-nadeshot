@@ -112,6 +112,47 @@ class Bot:
         else:
             pass
 
+    def organize_middlewares(self, middlewares=[]):
+        if middlewares:
+            before_middlewares = []
+            after_middlewares = []
+            for middleware in middlewares:
+                if middleware.startswith("before_"):
+                    before_middlewares.append(middleware)
+                elif middleware.startswith("after_"):
+                    after_middlewares.append(middleware)
+
+            return {
+                "before": before_middlewares,
+                "after": after_middlewares
+            }
+        return []
+    def run_middleware(self, ctx, middlewares = []):
+
+        status = True
+        error = None
+        message = None
+
+        if(middlewares):
+            for middleware in middlewares:
+                if (path.exists('middlewares/' + middleware + '.py')):
+                    commandContents = self.path_import('middlewares/' + middleware + '.py')
+                    className = getattr(commandContents, middleware)
+                    run = className(ctx)
+                    output = run.main()
+
+                    if 'status' in output:
+                        if not output['status']:
+                            status = False
+                            error = output['error']
+                        else:
+                            status = True
+                            if 'message' in output:
+                                message = output['message']
+
+
+        return status, error, message
+
     def isBanned(self, ctx):
         userInfo = user(ctx)
         status = False
@@ -242,6 +283,7 @@ class Bot:
 
                         authorization = []
                         authorize = True
+                        middlewares = self.organize_middlewares(validation['middlewares'])
 
                         if(len(validation['authorization'])):
                             authorization = validation['authorization']
@@ -250,23 +292,52 @@ class Bot:
                         if (not authorize):
                             ctx.channel.send("```This command requires special authorization.```")
                         else:
-                            try:
-                                commandContents = self.path_import('commands/' + validation['file'])
-                                className = getattr(commandContents, validation['name'])
+                            middleware_status = True
+                            middleware_error = None
+                            middleware_message = None
+
+                            before = []
+                            after = []
+
+                            if(middlewares):
+                                before = middlewares['before']
+                                after = middlewares['after']
+
+                                if before:
+                                     middleware_status, middleware_error, middleware_message = self.run_middleware(ctx, before)
+
+                            if middleware_status:
+                                if middleware_message:
+                                    await ctx.channel.send(middleware_message)
                                 try:
-                                    run = className(self.bot, ctx, args, authorization, inputArguments)
-                                    await run.main()
+                                    commandContents = self.path_import('commands/' + validation['file'])
+                                    className = getattr(commandContents, validation['name'])
+                                    try:
+                                        run = className(self.bot, ctx, args, authorization, inputArguments)
+                                        await run.main()
+                                    except Exception as e:
+                                        if(self.config['development-mode']):
+                                            await ctx.channel.send("```Error running class: " + str(e) + "\n"
+                                                                   + str(traceback.format_exc()) + "```")
+                                        else:
+                                            await ctx.channel.send("```System Error. Contact developer```")
                                 except Exception as e:
-                                    if(config['development-mode']):
-                                        await ctx.channel.send("```Error running class: " + str(e) + "\n"
-                                                               + str(traceback.format_exc()) + "```")
+                                    if(self.config['development-mode']):
+                                        await ctx.channel.send("```Error importing class: " + str(e) + "\n" + str(traceback.format_exc()) + "```")
                                     else:
                                         await ctx.channel.send("```System Error. Contact developer```")
-                            except Exception as e:
-                                if(config['development-mode']):
-                                    await ctx.channel.send("```Error importing class: " + str(e) + "\n" + str(traceback.format_exc()) + "```")
+                            else:
+                                await ctx.channel.send("```Error: " + middleware_error + "```")
+
+                            if after:
+                                run_after_status, run_after_error, run_after_message = self.run_middleware(ctx, after)
+                                if not run_after_status:
+                                    await ctx.channel.send("```Error " + run_after_error + "```")
                                 else:
-                                    await ctx.channel.send("```System Error. Contact developer```")
+                                    if run_after_message:
+                                        await ctx.channel.send(run_after_message)
+
+
                     else:
                         nadeshotEmbed = discord.Embed(title=self.config['bot-name'],
                                                       description='General information',

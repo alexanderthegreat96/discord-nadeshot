@@ -1,3 +1,26 @@
 {
-  "commands": {}
+  "commands": {
+    "build": {
+      "commands": {
+        "Track": {
+          "syntax": "/build track",
+          "description": "Awaiting developer description",
+          "filePath": "build/Track.py",
+          "authorization": [],
+          "hasValue": false,
+          "slashCommand": false,
+          "middlewares": [
+            "before_track",
+            "after_track"
+          ],
+          "arguments": {
+            "xbox": {
+              "required": true,
+              "hasValue": true
+            }
+          }
+        }
+      }
+    }
+  }
 }
