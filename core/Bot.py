@@ -1,5 +1,6 @@
 from discord.ext import commands
 from discord.ext.commands import cooldown, BucketType
+from discord import app_commands
 import discord
 import time
 import json
@@ -12,10 +13,11 @@ import types
 from utils.user import user
 from core.CommandLineArgumentParser import CommandLineArgumentParser
 import traceback
-
+from from_root import from_root
 class Bot:
     def __init__(self, ):
-        self.config = self.botConfig()
+        self.config = self.bot_config()
+
         self.bot = commands.Bot(command_prefix=self.config["bot-command-prefix"],
                                 activity=discord.Activity(type=discord.ActivityType.listening,
                                                           name=self.config["bot-listens-to"],
@@ -23,9 +25,9 @@ class Bot:
                                 intents=discord.Intents.all(), case_insensitive=True)
         self.commands = commands
 
-    def botConfig(self):
+    def bot_config(self):
         try:
-            f = open('config/bot.json', 'r')
+            f = open(from_root('config/bot.json'), 'r')
             try:
                 data = json.load(f)
                 return data['config']
@@ -34,9 +36,9 @@ class Bot:
         except Exception as e:
             return False
 
-    def staffList(self):
+    def staff_list(self):
         try:
-            f = open('config/staff.json', 'r')
+            f = open(from_root('config/staff.json'), 'r')
             try:
                 data = json.load(f)
                 return data['users']
@@ -45,9 +47,9 @@ class Bot:
         except Exception as e:
             return False
 
-    def staffGroups(self):
+    def staff_groups(self):
         try:
-            f = open('config/groups.json', 'r')
+            f = open(from_root('config/staff.json'), 'r')
             try:
                 data = json.load(f)
                 return data['groups']
@@ -67,7 +69,7 @@ class Bot:
 
     def command_list(self):
         try:
-            f = open('config/commands.json', 'r')
+            f = open(from_root('config/commands.json'), 'r')
             try:
                 data = json.load(f)
                 return data['commands']
@@ -76,7 +78,7 @@ class Bot:
         except Exception as e:
             return False
 
-    def isArray(self, input):
+    def is_array(self, input):
         if (isinstance(input, list)):
             return True
         elif isinstance(input, dict):
@@ -89,14 +91,14 @@ class Bot:
 
     def path_import(self, absolute_path):
         try:
-            spec = importlib.util.spec_from_file_location(absolute_path, absolute_path)
+            spec = importlib.util.spec_from_file_location(absolute_path, from_root(absolute_path))
             module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(module)
             return module
         except Exception as e:
             return False
 
-    def checkIfItemIsNotEmpty(self, item):
+    def check_if_item_is_not_empty(self, item):
         if (item is not None):
             return True
         elif (item != ''):
@@ -104,11 +106,11 @@ class Bot:
         else:
             return False
 
-    def validateCommandInputs(self, inputs):
+    def validate_command_inputs(self, inputs):
 
         if ('arguments' in inputs and len(inputs['arguments'])):
             for item in inputs['arguments']:
-                self.validateCommandInputs(item)
+                self.validate_command_inputs(item)
         else:
             pass
 
@@ -127,7 +129,7 @@ class Bot:
                 "after": after_middlewares
             }
         return []
-    def run_middleware(self, ctx, middlewares = []):
+    def run_middleware(self, ctx, middlewares = [], command_data=None):
 
         status = True
         error = None
@@ -135,10 +137,10 @@ class Bot:
 
         if(middlewares):
             for middleware in middlewares:
-                if (path.exists('middlewares/' + middleware + '.py')):
+                if (path.exists(from_root('middlewares/' + middleware + '.py'))):
                     commandContents = self.path_import('middlewares/' + middleware + '.py')
                     className = getattr(commandContents, middleware)
-                    run = className(ctx)
+                    run = className(ctx, command_data)
                     output = run.main()
 
                     if 'status' in output:
@@ -153,11 +155,11 @@ class Bot:
 
         return status, error, message
 
-    def isBanned(self, ctx):
+    def is_banned(self, ctx):
         userInfo = user(ctx)
         status = False
 
-        if (path.exists('authorization/banned.py')):
+        if (path.exists(from_root('authorization/banned.py'))):
             commandContents = self.path_import('authorization/banned.py')
             className = getattr(commandContents, 'banned')
             run = className(ctx, userInfo.getUserId)
@@ -166,12 +168,12 @@ class Bot:
 
     def authorize(self, ctx, groups=[]):
         if (groups):
-            staffListGroups = self.staffGroups()
+            staff_listGroups = self.staff_groups()
             userInfo = user(ctx)
             status = False
             for group in groups:
-                if (group in staffListGroups):
-                    if (path.exists('authorization/' + group + '.py')):
+                if (group in staff_listGroups):
+                    if (path.exists(from_root('authorization/' + group + '.py'))):
                         commandContents = self.path_import('authorization/' + group + '.py')
                         className = getattr(commandContents, group)
                         run = className(ctx, userInfo.getUserId())
@@ -193,7 +195,7 @@ class Bot:
             # enable cooldown resets for staff members
 
             if (self.config['enable-reset-cooldowns']):
-                staff = self.staffList()
+                staff = self.staff_list()
                 userInfo = user(ctx)
                 if (str(userInfo.getUserId()) in staff['admin']):
                     return ctx.command.reset_cooldown(ctx)
@@ -229,7 +231,21 @@ class Bot:
             if (self.config['enable-global-errors']):
                 raise error  # re-raise the error so all the errors will still show up in console
 
-        # @
+        @self.bot.event
+        async def on_guild_join(guild):
+            if path.exists(from_root("events/on_guild_join.py")):
+                event_contents = self.path_import('events/on_guild_join.py')
+                class_name = getattr(event_contents, 'OnGuildJoin')
+                run = class_name(guild,self.bot)
+                await run.main()
+
+        @self.bot.event
+        async def on_member_join(member):
+            if path.exists(from_root("events/on_member_join.py")):
+                event_contents = self.path_import('events/on_member_join.py')
+                class_name = getattr(event_contents, 'OnMemberJoin')
+                run = class_name(member,self.bot)
+                await run.main()
 
         command_list = self.command_list()
 
@@ -270,8 +286,6 @@ class Bot:
                     else:
                         await ctx.channel.send("```Automatic command helper is disabled due to multi-user-type permissions.\n"
                                                "You could use /whatever-command help. That's where helpers are generally stored.```")
-
-
                 else:
                     providedArguments = self.config['bot-command-prefix'] + "" + commandName + " " + " ".join(args)
                     parser = CommandLineArgumentParser(providedArguments)
@@ -304,7 +318,7 @@ class Bot:
                                 after = middlewares['after']
 
                                 if before:
-                                     middleware_status, middleware_error, middleware_message = self.run_middleware(ctx, before)
+                                     middleware_status, middleware_error, middleware_message = self.run_middleware(ctx, before, validation)
 
                             if middleware_status:
                                 if middleware_message:
@@ -330,7 +344,7 @@ class Bot:
                                 await ctx.channel.send("```Error: " + middleware_error + "```")
 
                             if after:
-                                run_after_status, run_after_error, run_after_message = self.run_middleware(ctx, after)
+                                run_after_status, run_after_error, run_after_message = self.run_middleware(ctx, after, validation)
                                 if not run_after_status:
                                     await ctx.channel.send("```Error " + run_after_error + "```")
                                 else:
@@ -360,6 +374,8 @@ class Bot:
                             nadeshotEmbed.add_field(name="Error", value=validation['error'], inline=False)
 
                         await ctx.channel.send(embed=nadeshotEmbed)
+
+
 
     def boot(self):
         print(self.config['bot-name'] + ' started running\nawaiting user input...')

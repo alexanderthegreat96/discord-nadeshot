@@ -19,6 +19,16 @@
               "hasValue": true
             }
           }
+        },
+        "TestThis": {
+          "syntax": "/build test-this",
+          "description": "Awaiting developer description",
+          "filePath": "build/TestThis.py",
+          "authorization": [],
+          "hasValue": false,
+          "slashCommand": false,
+          "middlewares": [],
+          "arguments": {}
         }
       }
     }

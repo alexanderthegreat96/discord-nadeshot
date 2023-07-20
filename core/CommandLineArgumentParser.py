@@ -1,6 +1,6 @@
 import json
 import re
-
+from from_root import from_root
 class CommandLineArgumentParser:
     def __init__(self, commandinput=""):
         self.input = self.process_string(commandinput)
@@ -23,7 +23,7 @@ class CommandLineArgumentParser:
 
     def commands(self):
         try:
-            with open('config/commands.json') as f:
+            with open(from_root('config/commands.json')) as f:
                try:
                    commands = json.load(f)
                    return commands['commands'] if 'commands' in commands else None

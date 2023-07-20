@@ -10,6 +10,10 @@
     "cooldown-duration": 15,
     "enable-global-errors" : true,
     "enable-automatic-command-helper": false,
-    "development-mode": true
+    "development-mode": true,
+    "enable-server-age": true,
+    "server-age-limit": 60,
+    "enable-user-age": true,
+    "user-age-limit": 60
   }
 }
