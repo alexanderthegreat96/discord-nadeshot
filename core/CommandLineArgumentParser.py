@@ -80,10 +80,13 @@ class CommandLineArgumentParser:
         arg_list = ""
         if (args):
             for arg_key, arg_details in args.items():
-                if ('type' in arg_details and arg_details['type']):
-                    arg_list += arg_key + " " + "{" + arg_details['type'] + "} "
-                else:
-                    arg_list += arg_key + " " + "{" + arg_key + "}"
+                if arg_details:
+                    if 'hasValue' in arg_details and 'required' in arg_details:
+                        if arg_details['hasValue'] or arg_details['required']:
+                            if ('type' in arg_details and arg_details['type']):
+                                arg_list += arg_key + " " + "{" + arg_details['type'] + "} "
+                            else:
+                                arg_list += arg_key + " " + "{" + arg_key + "}"
         return arg_list
 
     def find_matching_command(self, input_command="", commands=None):
@@ -173,6 +176,8 @@ class CommandLineArgumentParser:
         errors = []
         argument_assoc = []
         status = True
+
+
         if command_input and arguments:
             input_to_array = command_input.split(" ")
             input_to_array = [element for element in input_to_array if element]
@@ -272,19 +277,35 @@ class CommandLineArgumentParser:
 
             syntax_to_array = command_syntax.split(" ")
             difference = list(set(input_to_array).symmetric_difference(set(syntax_to_array)))
-
-
             last_argument = None
-            if(difference):
 
+            if difference:
                 if(len(difference) > 1):
-                    last_argument = input_to_array[-2]
+                    last_argument = input_to_array[-1]
                 else:
-                    last_argument = input_to_array[0]
+                    last_argument = difference[0]
+            else:
+                # if the command has some arguments set in
+                # it's configuration show an error in case
+                # no arguments are provided
+                # THIS ERROR IS TRIGGERED only if AT LEAST ONE ARGUMENT
+                # has hasValue set to TRUE
+
+                if arguments:
+                    hasValuedArguments = False
+                    for argument,argument_details in arguments.items():
+                        if 'hasValue' in argument_details and argument_details['hasValue'] == True:
+                            hasValuedArguments = True
+                    if hasValuedArguments:
+                        status = False
+                        errors.append("No arguments provided.")
+                        errors.append("Run: [" + command_input + " help]")
+
 
             if(last_argument in arguments):
+
                 arg_data = arguments[last_argument]
-                if('hasValue' in arg_data and arg_data['hasValue'] and 'required' not in arg_data or not arg_data['required']):
+                if('hasValue' in arg_data and arg_data['hasValue'] == True):
 
                     start_index = input_to_array.index(last_argument)
                     argument_value_index = start_index + 1
@@ -360,7 +381,6 @@ class CommandLineArgumentParser:
                                 else:
                                     argument_assoc.append({last_argument: self.wrap_string_with_underscore(argument_value)})
 
-
                     else:
                         status = False
                         errors.append(f"Argument {last_argument} is provided and must have a VALUE.")
@@ -384,6 +404,7 @@ class CommandLineArgumentParser:
                 start_index = input_to_array.index(argument)
                 argument_value_index = start_index + 1
 
+
                 if (not self.checkIfIndexIsOutOfRange(input_to_array, argument_value_index)):
                     errors.append(f"A value is required at the end of the command.")
                     status = False
@@ -399,9 +420,11 @@ class CommandLineArgumentParser:
 
     def combine_dictionaries(self, list_of_dicts):
         combined_dict = {}
-        if(list_of_dicts):
+        if(len(list_of_dicts) > 1):
             for dictionary in list_of_dicts:
                 combined_dict.update(dictionary)
+        else:
+            combined_dict.update(list_of_dicts)
         return combined_dict
 
     def wrap_string_with_underscore(self, text):
