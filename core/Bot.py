@@ -308,22 +308,22 @@ class Bot:
                             parser = CommandLineArgumentParser(providedArguments)
                             validation = parser.parse()
 
-                            if (validation['status']):
+                            authorization = []
+                            authorize = True
+                            if ('authorization' in validation and len(validation['authorization'])):
+                                authorization = validation['authorization']
+                                authorize = self.authorize(ctx, authorization)
 
-                                inputArguments = validation['args']
+                            if (not authorize):
+                                await ctx.channel.send("```This command requires special authorization.```")
+                            else:
 
-                                authorization = []
-                                authorize = True
-                                middlewares = self.organize_middlewares(validation['middlewares'])
+                                if (validation['status']):
 
-                                if (len(validation['authorization'])):
-                                    print("here")
-                                    authorization = validation['authorization']
-                                    authorize = self.authorize(ctx, authorization)
+                                    inputArguments = validation['args']
+                                    middlewares = self.organize_middlewares(validation['middlewares'])
 
-                                if (not authorize):
-                                    await ctx.channel.send("```This command requires special authorization.```")
-                                else:
+
                                     middleware_status = True
                                     middleware_error = None
                                     middleware_message = None
@@ -373,33 +373,31 @@ class Bot:
                                         else:
                                             if run_after_message:
                                                 await ctx.channel.send(run_after_message)
+                                else:
+                                    nadeshotEmbed = discord.Embed(title=self.config['bot-name'],
+                                                                  description='General information',
+                                                                  color=discord.Color.blue())
+                                    nadeshotEmbed.set_footer(text="Powered by Nadeshot BETA")
 
+                                    if ("errors" in validation):
 
-                            else:
-                                nadeshotEmbed = discord.Embed(title=self.config['bot-name'],
-                                                              description='General information',
-                                                              color=discord.Color.blue())
-                                nadeshotEmbed.set_footer(text="Powered by Nadeshot BETA")
+                                        nadeshotEmbed.add_field(name="Command input", value=validation["name"],
+                                                                inline=False)
+                                        nadeshotEmbed.add_field(name="Description", value=validation["description"],
+                                                                inline=False)
+                                        nadeshotEmbed.add_field(name="Example input", value=validation["syntax"],
+                                                                inline=False)
 
-                                if ("errors" in validation):
+                                        errors = ""
+                                        for error in validation["errors"]:
+                                            errors += "```" + error + "```"
 
-                                    nadeshotEmbed.add_field(name="Command input", value=validation["name"],
-                                                            inline=False)
-                                    nadeshotEmbed.add_field(name="Description", value=validation["description"],
-                                                            inline=False)
-                                    nadeshotEmbed.add_field(name="Example input", value=validation["syntax"],
-                                                            inline=False)
+                                        nadeshotEmbed.add_field(name="Errors", value=errors, inline=False)
 
-                                    errors = ""
-                                    for error in validation["errors"]:
-                                        errors += "```" + error + "```"
+                                    if ("error" in validation):
+                                        nadeshotEmbed.add_field(name="Error", value=validation['error'], inline=False)
 
-                                    nadeshotEmbed.add_field(name="Errors", value=errors, inline=False)
-
-                                if ("error" in validation):
-                                    nadeshotEmbed.add_field(name="Error", value=validation['error'], inline=False)
-
-                                await ctx.channel.send(embed=nadeshotEmbed)
+                                    await ctx.channel.send(embed=nadeshotEmbed)
                     else:
                         await ctx.channel.send("```Error: " + middleware_error + "```")
 
@@ -450,21 +448,22 @@ class Bot:
                         parser = CommandLineArgumentParser(providedArguments)
                         validation = parser.parse()
 
-                        if (validation['status']):
+                        authorization = []
+                        authorize = True
 
-                            inputArguments = validation['args']
+                        if (len(validation['authorization'])):
+                            authorization = validation['authorization']
+                            authorize = self.authorize(ctx, authorization)
 
-                            authorization = []
-                            authorize = True
-                            middlewares = self.organize_middlewares(validation['middlewares'])
+                        if (not authorize):
+                            ctx.channel.send("```This command requires special authorization.```")
+                        else:
+                            if (validation['status']):
 
-                            if (len(validation['authorization'])):
-                                authorization = validation['authorization']
-                                authorize = self.authorize(ctx, authorization)
+                                inputArguments = validation['args']
+                                middlewares = self.organize_middlewares(validation['middlewares'])
 
-                            if (not authorize):
-                                ctx.channel.send("```This command requires special authorization.```")
-                            else:
+
                                 middleware_status = True
                                 middleware_error = None
                                 middleware_message = None
@@ -514,33 +513,31 @@ class Bot:
                                     else:
                                         if run_after_message:
                                             await ctx.channel.send(run_after_message)
+                            else:
+                                nadeshotEmbed = discord.Embed(title=self.config['bot-name'],
+                                                              description='General information',
+                                                              color=discord.Color.blue())
+                                nadeshotEmbed.set_footer(text="Powered by Nadeshot BETA")
 
+                                if ("errors" in validation):
 
-                        else:
-                            nadeshotEmbed = discord.Embed(title=self.config['bot-name'],
-                                                          description='General information',
-                                                          color=discord.Color.blue())
-                            nadeshotEmbed.set_footer(text="Powered by Nadeshot BETA")
+                                    nadeshotEmbed.add_field(name="Command input", value=validation["name"],
+                                                            inline=False)
+                                    nadeshotEmbed.add_field(name="Description", value=validation["description"],
+                                                            inline=False)
+                                    nadeshotEmbed.add_field(name="Example input", value=validation["syntax"],
+                                                            inline=False)
 
-                            if ("errors" in validation):
+                                    errors = ""
+                                    for error in validation["errors"]:
+                                        errors += "```" + error + "```"
 
-                                nadeshotEmbed.add_field(name="Command input", value=validation["name"],
-                                                        inline=False)
-                                nadeshotEmbed.add_field(name="Description", value=validation["description"],
-                                                        inline=False)
-                                nadeshotEmbed.add_field(name="Example input", value=validation["syntax"],
-                                                        inline=False)
+                                    nadeshotEmbed.add_field(name="Errors", value=errors, inline=False)
 
-                                errors = ""
-                                for error in validation["errors"]:
-                                    errors += "```" + error + "```"
+                                if ("error" in validation):
+                                    nadeshotEmbed.add_field(name="Error", value=validation['error'], inline=False)
 
-                                nadeshotEmbed.add_field(name="Errors", value=errors, inline=False)
-
-                            if ("error" in validation):
-                                nadeshotEmbed.add_field(name="Error", value=validation['error'], inline=False)
-
-                            await ctx.channel.send(embed=nadeshotEmbed)
+                                await ctx.channel.send(embed=nadeshotEmbed)
 
     def boot(self):
         print(self.config['bot-name'] + ' started running\nawaiting user input...')

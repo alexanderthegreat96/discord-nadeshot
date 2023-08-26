@@ -9,14 +9,14 @@ class CommandLineArgumentParser:
         input_string = input_string.lower()
         pattern = r'\[(.*?)\]'
         matches = re.findall(pattern, input_string)
-        if(matches):
+        if matches:
             for match in matches:
                 processed_match = match.replace(" ", "_")
                 input_string = input_string.replace(f"[{match}]", processed_match)
         return input_string
 
     def matchCommand(self, syntax, keyword):
-        if (re.search(syntax, keyword)):
+        if re.search(syntax, keyword):
             return True
         else:
             return False
@@ -631,6 +631,10 @@ class CommandLineArgumentParser:
 
                 if command['desc'] is None or command['desc'] == "":
                     errors.append("['description'] in " + command["name"] + " was not declared or it is empty")
+                    status = False
+
+                if 'authorization' not in command:
+                    errors.append("['authorization'] in " + command["name"] + " was not declared.")
                     status = False
 
                 if command['slashCommand'] is None or command['slashCommand'] == "":
