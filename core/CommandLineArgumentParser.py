@@ -5,6 +5,19 @@ class CommandLineArgumentParser:
     def __init__(self, commandinput=""):
         self.input = self.process_string(commandinput)
 
+    def calculate_symmetric_difference(self, syntax_to_array, input_to_array):
+        symmetric_difference = []
+
+        if syntax_to_array and input_to_array:
+            for item in input_to_array:
+                if item not in syntax_to_array:
+                    symmetric_difference.append(item)
+            for item in syntax_to_array:
+                if item not in input_to_array:
+                    symmetric_difference.append(item)
+
+        return symmetric_difference
+
     def process_string(self, input_string):
         input_string = input_string.lower()
         pattern = r'\[(.*?)\]'
@@ -30,6 +43,26 @@ class CommandLineArgumentParser:
                except ValueError:
                     return None
         except Exception as e:
+            return None
+
+    def generateArgumentAssociationUnique(self, args):
+        if len(args) > 1:
+            generated = [{}]
+            for i in range(0, len(args), 2):
+                key = args[i]
+                value = None if i == len(args) - 1 else args[i + 1]
+
+                if i + 2 < len(args) and args[i + 2] == value:
+                    generated[-1][key] = None
+                    generated.append({})
+                else:
+                    if value is not None:
+                        generated[-1][key] = self.wrap_string_with_underscore(value)
+                    else:
+                        generated[-1][key] = None
+
+            return generated
+        else:
             return None
 
     def generateArgumentAssociation(self, args):
@@ -173,15 +206,15 @@ class CommandLineArgumentParser:
         return converted_list
 
     def validate_arguments(self, command_input=None, arguments=None, command_syntax=None):
+        
+       
         errors = []
         argument_assoc = []
         status = True
 
-
         if command_input and arguments:
             input_to_array = command_input.split(" ")
             input_to_array = [element for element in input_to_array if element]
-
 
 
             # Handle required arguments
@@ -236,6 +269,16 @@ class CommandLineArgumentParser:
                                                 else:
                                                     argument_assoc.append({argument_key: self.converToBoolean(argument_value)})
 
+                                            elif type == 'array':
+                                                if 'accepts' in values and len(values['accepts']):
+                                                    if argument_value not in values['accepts']:
+                                                        status = False
+                                                        errors.append(
+                                                            f"Argument {argument_key} must contain one of the values: " + str(
+                                                                values['accepts']))
+                                                    else:
+                                                        argument_assoc.append({argument_key: argument_value})
+
                                             elif type == 'integer':
                                                 convertToInt = self.convertToInteger(argument_value)
                                                 if (convertToInt):
@@ -275,15 +318,26 @@ class CommandLineArgumentParser:
             #handle them only if they are provided
             #this means checking if they have a value
 
+
             syntax_to_array = command_syntax.split(" ")
-            difference = list(set(input_to_array).symmetric_difference(set(syntax_to_array)))
+            difference = self.calculate_symmetric_difference(syntax_to_array, input_to_array)
             last_argument = None
 
+
+
+
+
+            # this is where i handle
+            # the last argument key
+
             if difference:
-                if(len(difference) > 1):
-                    last_argument = input_to_array[-1]
-                else:
+                if len(difference) <= 1:
                     last_argument = difference[0]
+                else:
+                    if len(difference) % 2 == 0:
+                        last_argument = difference[-2]
+                    else:
+                        last_argument = difference[-1]
             else:
                 # if the command has some arguments set in
                 # it's configuration show an error in case
@@ -296,27 +350,32 @@ class CommandLineArgumentParser:
                     for argument,argument_details in arguments.items():
                         if 'hasValue' in argument_details and argument_details['hasValue'] == True:
                             hasValuedArguments = True
+
+
                     if hasValuedArguments:
                         status = False
                         errors.append("No arguments provided.")
                         errors.append("Run: [" + command_input + " help]")
 
 
+            
             if(last_argument in arguments):
-
+                
                 arg_data = arguments[last_argument]
+
                 if('hasValue' in arg_data and arg_data['hasValue'] == True):
 
                     start_index = input_to_array.index(last_argument)
                     argument_value_index = start_index + 1
 
                     if (self.checkIfIndexIsOutOfRange(input_to_array, argument_value_index)):
+
                         if ('hasValue' in arg_data):
                             has_value = arg_data.get('hasValue', False)
-
                             argument_value = input_to_array[argument_value_index]
                             # Check if the argument value meets the length requirements
                             if has_value and argument_value:
+
 
                                 # start checking string length
                                 if has_value and 'minLength' not in arg_data \
@@ -340,6 +399,7 @@ class CommandLineArgumentParser:
                                             errors.append(
                                                 f"Argument {last_argument} value is TOO LONG. Maximum length is {max_length}")
 
+
                                 #start checking type
                                 if ('type' in arg_data):
                                     type = arg_data.get('type')
@@ -350,8 +410,14 @@ class CommandLineArgumentParser:
                                                 errors.append(
                                                     f"Argument {last_argument} must be a BOOLEAN. Valid values include: [True, False, true, false]")
 
-                                            else:
-                                                argument_assoc.append({last_argument: self.converToBoolean(argument_value)})
+                                        elif type == 'array':
+
+                                            if 'accepts' in arg_data and len(arg_data['accepts']):
+                                                if argument_value not in arg_data['accepts']:
+                                                    status = False
+                                                    errors.append(
+                                                        f"Argument {last_argument} is provided and must contain one of the values: " + str(arg_data['accepts']))
+
 
                                         elif type == 'integer':
                                             convertToInt = self.convertToInteger(argument_value)
@@ -359,8 +425,7 @@ class CommandLineArgumentParser:
                                                 if not self.isInteger(convertToInt):
                                                     status = False
                                                     errors.append(f"Argument {last_argument} must be an INTEGER")
-                                                else:
-                                                    argument_assoc.append({last_argument: convertToInt})
+
                                             else:
                                                 status = False
                                                 errors.append(f"Argument {last_argument} must be an INTEGER.")
@@ -371,23 +436,31 @@ class CommandLineArgumentParser:
                                                 if not self.isFloat(convertToFloat):
                                                     status = False
                                                     errors.append(f"Argument {last_argument} must be a FLOAT")
-                                                else:
-                                                    argument_assoc.append({last_argument: convertToFloat})
+
                                             else:
                                                 status = False
                                                 errors.append(f"Argument {last_argument} must be a FLOAT")
-                                        else:
-                                            argument_assoc.append({last_argument: self.wrap_string_with_underscore(argument_value)})
-                                else:
-                                    argument_assoc.append({last_argument: self.wrap_string_with_underscore(argument_value)})
 
                     else:
                         status = False
                         errors.append(f"Argument {last_argument} is provided and must have a VALUE.")
+        
+            else:
+                argument_assoc = self.generateArgumentAssociation(difference)
 
-            if(not argument_assoc):
-                argument_assoc = self.generateArgumentAssociation(input_to_array)
+            if(not argument_assoc and difference):
+                argument_assoc = self.generateArgumentAssociationUnique(difference)
 
+                ## if no argument association can be generated
+                ## generate one using the argument
+                ## useful for when using the help at the
+                ## end of the commands
+                
+                if argument_assoc is None and last_argument in arguments:
+                    argument_assoc = [{last_argument : last_argument}]
+            else:
+                argument_assoc = self.generateArgumentAssociationUnique(input_to_array)
+            
         return status, errors, argument_assoc
 
     def validate_command_input(self, command_input, argument=None):
@@ -418,13 +491,14 @@ class CommandLineArgumentParser:
 
         return status, errors , argument_assoc
 
-    def combine_dictionaries(self, list_of_dicts):
+    def combine_dictionaries(self, list_of_dicts = None):
         combined_dict = {}
-        if(len(list_of_dicts) > 1):
-            for dictionary in list_of_dicts:
-                combined_dict.update(dictionary)
-        else:
-            combined_dict.update(list_of_dicts)
+        if list_of_dicts:
+            if len(list_of_dicts) > 1:
+                for dictionary in list_of_dicts:
+                    combined_dict.update(dictionary)
+            elif len(list_of_dicts) == 1:
+                combined_dict = list_of_dicts[0]
         return combined_dict
 
     def wrap_string_with_underscore(self, text):
@@ -481,7 +555,6 @@ class CommandLineArgumentParser:
             if(not has_value):
                 status, errors, args = self.validate_arguments(self.input, arguments, syntax)
             else:
-
                 syntax_to_array = syntax.replace("/","").split(" ")
 
                 if(len(syntax_to_array) > 1):
@@ -490,7 +563,9 @@ class CommandLineArgumentParser:
                     command_arg = syntax_to_array[0]
 
                 status, errors, args = self.validate_command_input(self.input, command_arg)
-
+            
+         
+            
             if (status and not errors):
                 return {
                     'status': True,
@@ -609,10 +684,10 @@ class CommandLineArgumentParser:
                         status = False
 
                 if 'type' in argument_value:
-                    if argument_value['type'] not in ['string', 'boolean', 'integer', 'float']:
+                    if argument_value['type'] not in ['string', 'boolean', 'integer', 'float', 'array']:
                         errors.append("Argument: [" + argument_key + "] key ['type'] must contain one of the "
                                                                      "following values: [string, boolean, integer, "
-                                                                     "float].")
+                                                                     "float, array].")
                         status = False
 
         return errors, status
