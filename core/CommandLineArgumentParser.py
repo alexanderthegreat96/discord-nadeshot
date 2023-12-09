@@ -45,27 +45,64 @@ class CommandLineArgumentParser:
         except Exception as e:
             return None
 
-    def generateArgumentAssociationUnique(self, args):
+    def generateArgumentAssociationUnique(self, args, keys):
+        
+        keys = list(keys)
         if len(args) > 1:
-            generated = [{}]
-            for i in range(0, len(args), 2):
-                key = args[i]
-                value = None if i == len(args) - 1 else args[i + 1]
+            generated = []
+            
+            if len(keys) < 1:
+                current_dict = {}
+                for i in range(0, len(args), 2):
+                    key = args[i]
+                    value = None if i == len(args) - 1 else args[i + 1]
 
-                if i + 2 < len(args) and args[i + 2] == value:
-                    generated[-1][key] = None
-                    generated.append({})
-                else:
-                    if value is not None:
-                        generated[-1][key] = self.wrap_string_with_underscore(value)
+                    if i + 2 < len(args) and args[i + 2] == value:
+                        current_dict[key] = None
                     else:
-                        generated[-1][key] = None
+                        if value is not None:
+                            current_dict[key] = self.wrap_string_with_underscore(value)
+                        else:
+                            current_dict[key] = None
 
-            return generated
+                        generated.append(current_dict.copy())
+                        current_dict.clear()
+                        
+                
+            else:
+                # implement iterating over the arguments
+                # if the keys are found 
+
+                for key in keys:
+                    
+                    if key in args:
+                        result_dict = {}
+                        index = args.index(key)
+                        value = args[index + 1] if index + 1 else None
+                        result_dict[key] = value
+                        if index + 1:
+                            args.pop(index + 1)
+                        args.pop(index)
+                        generated.append(result_dict)
+                    
+                # Add the remaining args at the end
+                for i in range(0, len(args), 2):
+                    result_dict = {}
+                    key = args[i]
+                    value = args[i + 1] if i + 1 < len(args) else None
+                    result_dict[key] = self.wrap_string_with_underscore(value) if value is not None else None
+                    generated.append(result_dict)
+                    
+                if len(generated) == 1:
+                    return generated[0]
+                else:
+                    return generated
+        
         else:
             return None
 
     def generateArgumentAssociation(self, args):
+        print(args) 
         if len(args):
             generated = [{}]
             for i in range(len(args) - 1):
@@ -206,8 +243,6 @@ class CommandLineArgumentParser:
         return converted_list
 
     def validate_arguments(self, command_input=None, arguments=None, command_syntax=None):
-        
-       
         errors = []
         argument_assoc = []
         status = True
@@ -322,8 +357,6 @@ class CommandLineArgumentParser:
             syntax_to_array = command_syntax.split(" ")
             difference = self.calculate_symmetric_difference(syntax_to_array, input_to_array)
             last_argument = None
-
-
 
 
 
@@ -444,12 +477,12 @@ class CommandLineArgumentParser:
                     else:
                         status = False
                         errors.append(f"Argument {last_argument} is provided and must have a VALUE.")
-        
+
             else:
                 argument_assoc = self.generateArgumentAssociation(difference)
-
+                
             if(not argument_assoc and difference):
-                argument_assoc = self.generateArgumentAssociationUnique(difference)
+                argument_assoc = self.generateArgumentAssociationUnique(difference, arguments.keys())
 
                 ## if no argument association can be generated
                 ## generate one using the argument
@@ -457,10 +490,13 @@ class CommandLineArgumentParser:
                 ## end of the commands
                 
                 if argument_assoc is None and last_argument in arguments:
-                    argument_assoc = [{last_argument : last_argument}]
+                    #argument_assoc = [{last_argument : last_argument}]
+                    argument_assoc = {last_argument : last_argument}
             else:
-                argument_assoc = self.generateArgumentAssociationUnique(input_to_array)
-            
+                input_to_array.pop(0) # remove the command prefix
+                argument_assoc = self.generateArgumentAssociationUnique(input_to_array, arguments.keys())
+        
+        
         return status, errors, argument_assoc
 
     def validate_command_input(self, command_input, argument=None):
@@ -494,11 +530,11 @@ class CommandLineArgumentParser:
     def combine_dictionaries(self, list_of_dicts = None):
         combined_dict = {}
         if list_of_dicts:
-            if len(list_of_dicts) > 1:
+            if len(list_of_dicts) >= 2:
                 for dictionary in list_of_dicts:
                     combined_dict.update(dictionary)
-            elif len(list_of_dicts) == 1:
-                combined_dict = list_of_dicts[0]
+            else:
+                combined_dict = list_of_dicts # no 0 hey kere
         return combined_dict
 
     def wrap_string_with_underscore(self, text):

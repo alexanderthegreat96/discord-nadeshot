@@ -1,6 +1,6 @@
-discord
-discord.py
-numpy
-click
-from-root
-requests
+discord==2.3.2
+discord.py==2.3.2
+numpy==1.26.0
+click==8.1.7
+from-root==1.3.0
+requests==2.31.0
