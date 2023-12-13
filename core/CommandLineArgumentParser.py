@@ -78,10 +78,16 @@ class CommandLineArgumentParser:
                     if key in args:
                         result_dict = {}
                         index = args.index(key)
-                        value = args[index + 1] if index + 1 else None
+                        value = None
+
+                        if self.checkIfIndexIsOutOfRange(args, index + 1):
+                            value = args[index + 1] if index + 1 else None
+
                         result_dict[key] = value
-                        if index + 1:
+
+                        if self.checkIfIndexIsOutOfRange(args, index + 1):
                             args.pop(index + 1)
+                            
                         args.pop(index)
                         generated.append(result_dict)
                     
@@ -102,7 +108,6 @@ class CommandLineArgumentParser:
             return None
 
     def generateArgumentAssociation(self, args):
-        print(args) 
         if len(args):
             generated = [{}]
             for i in range(len(args) - 1):
