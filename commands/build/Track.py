@@ -11,7 +11,6 @@ class Track:
         self.args = args
         self.inputArguments = inputArguments
 
-
     async def main(self):
         try:
             server_info = await self.bot.fetch_guild(self.ctx.guild.id)
@@ -19,9 +18,9 @@ class Track:
             today = datetime.datetime.now().date()
             server_creation_date = server_info.created_at.date()
             days_old = (today - server_creation_date).days
-            if(days_old >= 60):
+            if days_old >= 60:
                 print("older than 3 months")
             else:
                 print("younger than 3 months")
         except Exception as e:
-           print(str(e))
+            print(str(e))

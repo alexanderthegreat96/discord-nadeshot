@@ -1,0 +1,28 @@
+{
+  "tasks": {
+    "TaskSample": {
+      "file_name": "task_sample.py",
+      "class_name": "TaskSample",
+      "hours": 1,
+      "minutes": 0,
+      "seconds": 0,
+      "enabled": true
+    },
+    "AnotherTask": {
+      "file_name": "another_task.py",
+      "class_name": "AnotherTask",
+      "hours": 1,
+      "minutes": 0,
+      "seconds": 30,
+      "enabled": false
+    },
+    "MySecondTask": {
+      "file_name": "my_second_task.py",
+      "class_name": "MySecondTask",
+      "hours": 1,
+      "minutes": 0,
+      "seconds": 0,
+      "enabled": true
+    }
+  }
+}

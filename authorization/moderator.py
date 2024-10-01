@@ -8,10 +8,10 @@ class moderator:
 
     def staffList(self):
         try:
-            f = open('config/staff.json', 'r')
+            f = open("config/staff.json", "r")
             try:
                 data = json.load(f)
-                return data['users']
+                return data["users"]
             except Exception as e:
                 return False
         except Exception as e:
@@ -19,6 +19,6 @@ class moderator:
 
     def main(self):
         staffList = self.staffList()
-        if (str(self.user_id) in staffList['moderator']):
+        if str(self.user_id) in staffList["moderator"]:
             return True
         return False
