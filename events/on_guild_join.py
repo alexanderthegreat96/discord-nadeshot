@@ -7,7 +7,7 @@ class OnGuildJoin:
     def __init__(self, guild, bot):
         self.guild = guild
         self.bot = bot
-        
+
         self.guild_wrapper = GuildWrapper(self.guild)
         self.logger = Logger("Event: OnGuildJoin").get_logger()
 

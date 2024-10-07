@@ -1,5 +1,7 @@
 {
   "config": {
+    "bot-name": "Nadeshot",
+    "bot-command-prefix": "/",
     "bot-listens-to": "/nade",
     "bot-description": "Run /nade help for full list of commands",
     "enable-reset-cooldowns": true,

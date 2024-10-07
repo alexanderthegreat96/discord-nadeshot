@@ -1,11 +1,16 @@
 import discord
 from typing import Optional
 
+
 class MessageWrapper:
     def __init__(self, message: discord.Message):
         self._message_id = message.id
         self._content = message.content
-        self._channel_name = message.channel.name if isinstance(message.channel, discord.TextChannel) else "Private Channel"
+        self._channel_name = (
+            message.channel.name
+            if isinstance(message.channel, discord.TextChannel)
+            else "Private Channel"
+        )
         self._channel_id = message.channel.id
         self._author_id = message.author.id
         self._author_name = message.author.name
@@ -30,8 +35,8 @@ class MessageWrapper:
             "author_is_bot": self._author_is_bot,
             "guild_name": self._guild_name,
             "guild_id": self._guild_id,
-            "message_type": self._message_type,
-            "message_flags": self._message_flags,
+            "message_type": str(self._message_type),
+            "message_flags": str(self._message_flags),
             "message_creation_time": self._message_creation_time,
         }
 
@@ -73,7 +78,7 @@ class MessageWrapper:
         return self._message_flags
 
     def get_message_creation_time(self) -> discord.utils.time_snowflake:
-        return self._message_creation_time
+        return int(self._message_creation_time)
 
     def __str__(self):
         return f"Message(id={self._message_id}, author={self._author_name}, content='{self._content}')"

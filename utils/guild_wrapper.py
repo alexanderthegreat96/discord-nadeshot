@@ -1,6 +1,7 @@
 import discord
 import datetime
 
+
 class GuildWrapper:
     def __init__(self, guild: discord.Guild) -> None:
         self.guild = guild
@@ -8,7 +9,6 @@ class GuildWrapper:
         self.guild_name = guild.name
         self.member_count = guild.member_count
         self.owner = guild.owner  # discord.Member object
-        self.region = guild.region  # Deprecated in newer versions
         self.created_at = guild.created_at
         self.icon_url = guild.icon.url if guild.icon else None
         self.description = guild.description
@@ -29,7 +29,7 @@ class GuildWrapper:
     def get_owner(self) -> discord.Member:
         return self.owner
 
-    def get_region(self) -> discord.VoiceRegion:
+    def get_region(self):
         return self.region
 
     def get_creation_date(self) -> str:
@@ -39,7 +39,7 @@ class GuildWrapper:
         today = datetime.datetime.now().date()
         server_creation_date = self.created_at.date()
         return (today - server_creation_date).days
-        
+
     def get_icon_url(self) -> str:
         return self.icon_url
 

@@ -2,6 +2,7 @@ import discord
 from typing import List, Union, Optional, Dict
 import datetime
 
+
 class MemberWrapper:
     def __init__(self, member: discord.Member):
         self.member = member
@@ -47,7 +48,7 @@ class MemberWrapper:
         today = datetime.datetime.now().date()
         user_creation_date = self.member.created_at.date()
         return (today - user_creation_date).days
-    
+
     def get_default_avatar(self) -> str:
         return str(self.member.default_avatar.url)
 
@@ -94,7 +95,11 @@ class MemberWrapper:
         return self.member.id
 
     def get_joined_at(self) -> str:
-        return self.member.joined_at.strftime("%Y-%m-%d %H:%M:%S") if self.member.joined_at else "N/A"
+        return (
+            self.member.joined_at.strftime("%Y-%m-%d %H:%M:%S")
+            if self.member.joined_at
+            else "N/A"
+        )
 
     def get_mention(self) -> str:
         return self.member.mention
@@ -108,6 +113,9 @@ class MemberWrapper:
     def get_name(self) -> str:
         return self.member.name
 
+    def get_username(self) -> str:
+        return self.get_name()
+
     def get_nickname(self) -> Optional[str]:
         return self.member.nick
 
@@ -115,7 +123,11 @@ class MemberWrapper:
         return self.member.pending
 
     def get_premium_since(self) -> Optional[str]:
-        return self.member.premium_since.strftime("%Y-%m-%d %H:%M:%S") if self.member.premium_since else None
+        return (
+            self.member.premium_since.strftime("%Y-%m-%d %H:%M:%S")
+            if self.member.premium_since
+            else None
+        )
 
     def get_public_flags(self) -> discord.PublicUserFlags:
         return self.member.public_flags
@@ -136,7 +148,11 @@ class MemberWrapper:
         return self.member.system
 
     def get_timed_out_until(self) -> Optional[str]:
-        return self.member.timed_out_until.strftime("%Y-%m-%d %H:%M:%S") if self.member.timed_out_until else None
+        return (
+            self.member.timed_out_until.strftime("%Y-%m-%d %H:%M:%S")
+            if self.member.timed_out_until
+            else None
+        )
 
     def get_top_role(self) -> str:
         return self.member.top_role.name
@@ -148,7 +164,20 @@ class MemberWrapper:
         return self.member.web_status
 
     # Method to gather all member information in a structured dictionary
-    def get_member_info(self) -> Dict[str, Union[str, int, bool, Optional[str], List[str], discord.Status, List[discord.Guild]]]:
+    def get_member_info(
+        self,
+    ) -> Dict[
+        str,
+        Union[
+            str,
+            int,
+            bool,
+            Optional[str],
+            List[str],
+            discord.Status,
+            List[discord.Guild],
+        ],
+    ]:
         return {
             "member_id": self.get_id(),
             "username": self.get_name(),
@@ -180,5 +209,7 @@ class MemberWrapper:
             "banner_url": self.get_banner(),
             "default_avatar_url": self.get_default_avatar(),
             "guild_avatar_url": self.get_guild_avatar(),
-            "accent_color": str(self.get_accent_color()) if self.get_accent_color() else None,
+            "accent_color": str(self.get_accent_color())
+            if self.get_accent_color()
+            else None,
         }

@@ -1,0 +1,12 @@
+services:
+  discord-nadeshot-bot:
+    entrypoint: ./watcher-docker
+    container_name: "discord-nadeshot-bot"
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - type: bind
+        source: .
+        target: /usr/src/app
+    restart: unless-stopped

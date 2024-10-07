@@ -27,9 +27,11 @@ class Bot:
     def __init__(
         self,
     ):
-        self.config = self.bot_config()
         self.env = EnvParser(from_root(".env"))
-        
+        self.config = self.bot_config()
+        self.bot_token = self.env.get("BOT_TOKEN", default="Hahahaha")
+        self.bot_name = self.env.get("BOT_NAME", default=self.config["bot-name"])
+
         self.bot = commands.Bot(
             command_prefix="/",
             activity=discord.Activity(
@@ -46,6 +48,7 @@ class Bot:
         self.logging: Logger = Logger(
             self.env.get("BOT_NAME", default="Nadeshot")
         ).get_logger()  # standard issue logger
+
         self.executor: ThreadPoolExecutor = ThreadPoolExecutor()  # handles execution of taks in parallel to prevent main process performance issues
 
         # response queues handler
@@ -185,7 +188,10 @@ class Bot:
 
                             command_contents = self.path_import(f"tasks/{file_name}")
                             TaskClass = getattr(command_contents, class_name)
-                            task_instance = TaskClass(self.bot, self.logging)
+                            task_instance = TaskClass(
+                                self.bot,
+                                self.logging,
+                            )
 
                             async def task_main():
                                 await task_instance.main()
@@ -391,7 +397,6 @@ class Bot:
                 class_name = getattr(event_contents, "OnMemberRemove")
                 run = class_name(member, self.bot)
                 await run.main()
-        
 
         @self.bot.event
         async def on_message_edit(before, after):
@@ -402,7 +407,7 @@ class Bot:
                 class_name = getattr(event_contents, "OnMessageEdit")
                 run = class_name(before, after, self.bot)
                 await run.main()
-        
+
         @self.bot.event
         async def on_message_delete(message):
             if message.author == self.bot.user:
@@ -416,10 +421,13 @@ class Bot:
 
         @self.bot.event
         async def on_member_ban(guild, member):
+            ban_entry = await guild.fetch_ban(member)
+            ban_reason = ban_entry.reason
+
             if path.exists(from_root("events/on_member_ban.py")):
                 event_contents = self.path_import("events/on_member_ban.py")
                 class_name = getattr(event_contents, "OnMemberBan")
-                run = class_name(guild, member, self.bot)
+                run = class_name(guild, member, ban_reason, self.bot)
                 await run.main()
 
         @self.bot.event
@@ -898,10 +906,10 @@ class Bot:
 
     def boot(self):
         try:
-            self.logging.success(f"Bot: {self.env.get("BOT_NAME", default="Nadeshot")} started running...")
+            self.logging.success(f"Bot: {self.bot_name} started running...")
             self.logging.info("Awaiting user input...")
-            self.bot.run(token=self.env.get("BOT_TOKEN", default="Hahahaha"))
+            self.bot.run(token=self.bot_token)
         except Exception as e:
             self.logging.error(
-                f"Bot token: [{self.env.get("BOT_TOKEN", default="Hahahaha")}] is invalid. Please check."
+                f"Bot token: [{self.bot_token}] is invalid. Please check."
             )

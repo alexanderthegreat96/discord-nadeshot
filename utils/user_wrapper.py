@@ -1,10 +1,11 @@
 import discord
 import datetime
 
+
 class UserWrapper:
     def __init__(self, user: discord.User):
         self.user = user
-        
+
     def get_user_id(self) -> int:
         return self.user.id
 
@@ -21,16 +22,22 @@ class UserWrapper:
         return self.user.bot
 
     def get_avatar_url(self) -> str:
-        return str(self.user.avatar.url) if self.user.avatar else str(self.user.default_avatar.url)
+        return (
+            str(self.user.avatar.url)
+            if self.user.avatar
+            else str(self.user.default_avatar.url)
+        )
 
     def get_mention(self) -> str:
         return self.user.mention
 
     def get_creation_date(self) -> str:
         return self.user.created_at.strftime("%Y-%m-%d %H:%M:%S")
-    
+
     def get_global_name(self) -> str:
-        return self.user.global_name if self.user.global_name else self.get_full_username()
+        return (
+            self.user.global_name if self.user.global_name else self.get_full_username()
+        )
 
     def is_avatar_animated(self) -> bool:
         return self.user.is_avatar_animated()
@@ -42,7 +49,7 @@ class UserWrapper:
         today = datetime.datetime.now().date()
         user_creation_date = self.user.created_at.date()
         return (today - user_creation_date).days
-    
+
     def get_user_info(self) -> dict:
         return {
             "user_id": self.get_user_id(),
@@ -56,5 +63,5 @@ class UserWrapper:
             "age_in_days": self.get_age_in_days(),
             "global_name": self.get_global_name(),
             "is_avatar_animated": self.is_avatar_animated(),
-            "public_flags": self.get_public_flags().all()  # Converts flags to a dict of boolean values
+            "public_flags": self.get_public_flags().all(),  # Converts flags to a dict of boolean values
         }
