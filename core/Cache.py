@@ -211,13 +211,49 @@ class Cache:
         except Exception as e:
             return {"status": False, "error": f"Error dequeuing item: {e}"}
 
-    def process_queue(self, queue_name: str, process_func, timeout: int = 0):
-        """Continuously dequeue items and process them using the provided function."""
+    def process_queue(self, queue_name: str, process_func, is_unique: bool = False, timeout: int = 0):
+        """
+        Continuously dequeue items and process them using the provided function.
+        After all items are processed, clear the unique tracking set associated with the queue.
+
+        :param queue_name: Name of the Redis queue.
+        :param process_func: Function to process each dequeued item.
+        :param is_unique: Will attempt to wipe any queue sets if they are found
+        :param timeout: Timeout for the dequeue operation in seconds.
+        """
         full_queue_name = self.__global_cache_key + queue_name
+        unique_set_name = full_queue_name + "_set"
+
         while True:
             item = self.dequeue_item(queue_name, timeout)
             if item["status"]:
-                process_func(item["item"])
+
+                try:
+                    process_func(item["item"])
+                    logging.info(f"Processed item: {item['item']}")
+                except Exception as e:
+                    logging.error(f"Error processing item {item['item']}: {e}")
             else:
                 logging.info(f"Queue {full_queue_name} is empty or timeout reached.")
                 break
+
+        if is_unique:
+            try:
+                def _clear_set():
+                    """Inner function to clear the unique set in Redis."""
+                    if self.__redis.type(unique_set_name) == b"set":
+                        self.__redis.delete(unique_set_name)
+                        return {"status": True, "message": f"Unique set '{unique_set_name}' cleared."}
+                    else:
+                        return {
+                            "status": False,
+                            "error": f"Set: {unique_set_name} was not found.",
+                        }
+
+                clear_result = self._execute_with_reconnect(_clear_set)
+                if clear_result["status"]:
+                    logging.info(clear_result["message"])
+                else:
+                    logging.warning(clear_result["error"])
+            except Exception as e:
+                logging.error(f"Failed to clear unique set '{unique_set_name}': {e}")
