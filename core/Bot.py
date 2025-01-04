@@ -13,7 +13,7 @@ from utils.discord_user import DiscordUser
 from core.CommandLineArgumentParser import CommandLineArgumentParser
 import traceback
 from from_root import from_root
-from utils.cooldown_immune import cooldown_immune
+from utils.cooldown_immune import CooldownImmune
 from core.Logger import Logger
 from utils.error_handler import ErrorHandler
 from concurrent.futures import ThreadPoolExecutor
@@ -339,11 +339,11 @@ class Bot:
         self.logging.success(f"Hooked Command: {commandName}")
 
         @self.bot.before_invoke
-        async def resetCooldown(ctx):
+        async def reset_cooldown(ctx):
             if self.config["enable-reset-cooldowns"]:
                 userInfo = DiscordUser(ctx)
-                immune = cooldown_immune(ctx, userInfo.user_id)
-                if immune:
+                immune = CooldownImmune(ctx, userInfo.user_id)
+                if immune.main():
                     return ctx.command.reset_cooldown(ctx)
 
         @self.bot.event

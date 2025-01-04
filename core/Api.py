@@ -4,6 +4,7 @@ from from_root import from_root
 from core.Logger import Logger
 from datetime import datetime, timedelta
 import time
+from functools import wraps
 from typing import Union
 
 
@@ -34,12 +35,54 @@ class Embed:
 
 class ApiActions:
     DISCORD_EPOCH = 1420070400000
+    MAX_RETRIES = 5
+    RETRY_DELAY = 2
 
     def __init__(self) -> None:
         env = EnvParser(from_root(".env"))
         self.api_base_url = "https://discord.com/api/v10"
         self.bot_token = env.get("BOT_TOKEN")
         self.logger = Logger("API Actions").get_logger()
+
+    def retry_request(func):
+        """Decorator to retry request on failure or rate-limiting (429)."""
+
+        @wraps(func)
+        def wrapper(self, *args, **kwargs):
+            retries = 0
+            while retries < self.MAX_RETRIES:
+                try:
+                    response = func(self, *args, **kwargs)
+
+                    if response.status_code in [200, 201, 204]:
+                        return {"status": True}
+                    elif response.status_code == 429:
+                        retry_after = response.json().get(
+                            "retry_after", self.RETRY_DELAY
+                        )
+                        self.logger.warning(
+                            f"Rate limited, retrying in {retry_after} seconds..."
+                        )
+                        time.sleep(retry_after)
+                    else:
+                        self.logger.error(
+                            f"Failed to send request: {response.status_code} - {response.text}"
+                        )
+                        return {
+                            "status": False,
+                            "code": response.status_code,
+                            "error": f"{response.status_code} - {response.text}",
+                        }
+
+                except requests.RequestException as e:
+                    self.logger.error(f"Request error while sending message: {e}")
+                    return {"status": False, "error": f"Error: {e}"}
+
+                retries += 1
+                time.sleep(self.RETRY_DELAY)
+            return {"status": False, "error": "Max retries reached"}
+
+        return wrapper
 
     def get_age_in_days_from_id(self, entity_id: int) -> int:
         """Extract the user creation date from the Discord Snowflake ID and return the account age in days."""
@@ -51,126 +94,63 @@ class ApiActions:
 
         return age_in_days
 
+    @retry_request
     def send_message_to_channel(self, channel_id: int, data: any):
-        """Send logs to a Discord channel synchronously."""
+        """Send logs to a Discord channel."""
         url = f"{self.api_base_url}/channels/{channel_id}/messages"
         payload = {"content": f"```{data}```"}
+        return requests.post(
+            url,
+            headers={
+                "Authorization": f"Bot {self.bot_token}",
+                "Content-Type": "application/json",
+            },
+            json=payload,
+        )
 
-        try:
-            response = requests.post(
-                url,
-                headers={
-                    "Authorization": f"Bot {self.bot_token}",
-                    "Content-Type": "application/json",
-                },
-                json=payload,
-            )
-
-            if response.status_code == 200:
-                self.logger.success(f"Message Sent: {data}")
-                return {"status": True}
-            else:
-                self.logger.error(
-                    f"Failed to send message: {response.status_code} - {response.text}"
-                )
-                return {
-                    "status": False,
-                    "error": f"{response.status_code} - {response.text}",
-                }
-        except requests.RequestException as e:
-            self.logger.error(f"Request error while sending message: {e}")
-            return {"status": False, "error": f"Error: {e}"}
-
+    @retry_request
     def send_dm(self, user_id: int, data: any):
-        """Send a direct message to a user synchronously."""
+        """Send a direct message to a user."""
         url = f"{self.api_base_url}/users/{user_id}/messages"
         payload = {"content": f"```{data}```"}
+        return requests.post(
+            url,
+            headers={
+                "Authorization": f"Bot {self.bot_token}",
+                "Content-Type": "application/json",
+            },
+            json=payload,
+        )
 
-        try:
-            response = requests.post(
-                url,
-                headers={
-                    "Authorization": f"Bot {self.bot_token}",
-                    "Content-Type": "application/json",
-                },
-                json=payload,
-            )
-
-            if response.status_code == 200:
-                self.logger.info(f"DM sent to user {user_id}: {data}")
-                return {"status": True}
-            else:
-                self.logger.error(
-                    f"Failed to send DM: {response.status_code} - {response.text}"
-                )
-                return {
-                    "status": False,
-                    "error": f"{response.status_code} - {response.text}",
-                }
-        except requests.RequestException as e:
-            self.logger.error(f"Request error while sending DM: {e}")
-            return {"status": False, "error": f"Error: {e}"}
-
+    @retry_request
     def send_embed_to_channel(self, channel_id: int, embed: dict):
-        """Send an embed message to a Discord channel synchronously."""
+        """Send an embed message to a Discord channel."""
         url = f"{self.api_base_url}/channels/{channel_id}/messages"
         payload = {"embeds": [embed]}
+        return requests.post(
+            url,
+            headers={
+                "Authorization": f"Bot {self.bot_token}",
+                "Content-Type": "application/json",
+            },
+            json=payload,
+        )
 
-        try:
-            response = requests.post(
-                url,
-                headers={
-                    "Authorization": f"Bot {self.bot_token}",
-                    "Content-Type": "application/json",
-                },
-                json=payload,
-            )
-
-            if response.status_code == 200:
-                self.logger.info(f"Embed sent to channel {channel_id}: {embed}")
-                return {"status": True}
-            else:
-                self.logger.error(
-                    f"Failed to send embed to channel: {response.status_code} - {response.text}"
-                )
-                return {
-                    "status": False,
-                    "error": f"{response.status_code} - {response.text}",
-                }
-        except requests.RequestException as e:
-            self.logger.error(f"Request error while sending embed to channel: {e}")
-            return {"status": False, "error": f"Error: {e}"}
-
+    @retry_request
     def send_embed_to_dm(self, user_id: int, embed: dict):
-        """Send an embed message to a user's DM synchronously."""
+        """Send an embed message to a user's DM."""
         url = f"{self.api_base_url}/users/{user_id}/messages"
         payload = {"embeds": [embed]}
+        return requests.post(
+            url,
+            headers={
+                "Authorization": f"Bot {self.bot_token}",
+                "Content-Type": "application/json",
+            },
+            json=payload,
+        )
 
-        try:
-            response = requests.post(
-                url,
-                headers={
-                    "Authorization": f"Bot {self.bot_token}",
-                    "Content-Type": "application/json",
-                },
-                json=payload,
-            )
-
-            if response.status_code == 200:
-                self.logger.info(f"Embed sent to DM for user {user_id}: {embed}")
-                return {"status": True}
-            else:
-                self.logger.error(
-                    f"Failed to send embed in DM: {response.status_code} - {response.text}"
-                )
-                return {
-                    "status": False,
-                    "error": f"{response.status_code} - {response.text}",
-                }
-        except requests.RequestException as e:
-            self.logger.error(f"Request error while sending embed to DM: {e}")
-            return {"status": False, "error": f"Error: {e}"}
-
+    @retry_request
     def delete_message(self, channel_id: int, message_id: int):
         """
         Delete a single message from a channel.
@@ -178,33 +158,15 @@ class ApiActions:
         :param message_id: The ID of the message to delete.
         """
         url = f"{self.api_base_url}/channels/{channel_id}/messages/{message_id}"
+        return requests.delete(
+            url,
+            headers={
+                "Authorization": f"Bot {self.bot_token}",
+                "Content-Type": "application/json",
+            },
+        )
 
-        try:
-            response = requests.delete(
-                url,
-                headers={
-                    "Authorization": f"Bot {self.bot_token}",
-                    "Content-Type": "application/json",
-                },
-            )
-
-            if response.status_code == 204:
-                self.logger.success(
-                    f"Message {message_id} deleted from channel {channel_id}"
-                )
-                return {"status": True}
-            else:
-                self.logger.error(
-                    f"Failed to delete message: {response.status_code} - {response.text}"
-                )
-                return {
-                    "status": False,
-                    "error": f"{response.status_code} - {response.text}",
-                }
-        except requests.RequestException as e:
-            self.logger.error(f"Request error while deleting message: {e}")
-            return {"status": False, "error": f"Error: {e}"}
-
+    @retry_request
     def ban_user(
         self, guild_id: int, user_id: int, reason: str = None, delete_days: int = 7
     ):
@@ -217,32 +179,16 @@ class ApiActions:
         """
         url = f"{self.api_base_url}/guilds/{guild_id}/bans/{user_id}"
         payload = {"delete_message_days": delete_days, "reason": reason}
+        return requests.put(
+            url,
+            headers={
+                "Authorization": f"Bot {self.bot_token}",
+                "Content-Type": "application/json",
+            },
+            json=payload,
+        )
 
-        try:
-            response = requests.put(
-                url,
-                headers={
-                    "Authorization": f"Bot {self.bot_token}",
-                    "Content-Type": "application/json",
-                },
-                json=payload,
-            )
-
-            if response.status_code == 204:
-                self.logger.success(f"User {user_id} banned from guild {guild_id}")
-                return {"status": True}
-            else:
-                self.logger.error(
-                    f"Failed to ban user: {response.status_code} - {response.text}"
-                )
-                return {
-                    "status": False,
-                    "error": f"{response.status_code} - {response.text}",
-                }
-        except requests.RequestException as e:
-            self.logger.error(f"Request error while banning user: {e}")
-            return {"status": False, "error": f"Error: {e}"}
-
+    @retry_request
     def kick_user(self, guild_id: int, user_id: int, reason: str = None):
         """
         Kick a user from a guild (server).
@@ -260,26 +206,9 @@ class ApiActions:
         if reason:
             headers["X-Audit-Log-Reason"] = reason
 
-        try:
-            response = requests.delete(url, headers=headers)
+        return requests.delete(url, headers=headers)
 
-            if response.status_code == 204:
-                self.logger.success(
-                    f"User {user_id} kicked from guild {guild_id}. Reason: {reason}"
-                )
-                return {"status": True}
-            else:
-                self.logger.error(
-                    f"Failed to kick user: {response.status_code} - {response.text}"
-                )
-                return {
-                    "status": False,
-                    "error": f"{response.status_code} - {response.text}",
-                }
-        except requests.RequestException as e:
-            self.logger.error(f"Request error while kicking user: {e}")
-            return {"status": False, "error": f"Error: {e}"}
-
+    @retry_request
     def timeout_user(
         self, guild_id: int, user_id: int, duration_in_minutes: int, reason: str = None
     ):
@@ -297,26 +226,7 @@ class ApiActions:
         timeout_end_iso = timeout_end.isoformat() + "Z"
 
         payload = {"communication_disabled_until": timeout_end_iso}
-
-        try:
-            response = requests.patch(url, json=payload, headers=headers)
-
-            if response.status_code == 200:
-                self.logger.success(
-                    f"User {user_id} timed out in guild {guild_id} for {duration_in_minutes} minutes. Reason: {reason}"
-                )
-                return {"status": True}
-            else:
-                self.logger.error(
-                    f"Failed to timeout user: {response.status_code} - {response.text}"
-                )
-                return {
-                    "status": False,
-                    "error": f"{response.status_code} - {response.text}",
-                }
-        except requests.RequestException as e:
-            self.logger.error(f"Request error while timing out user: {e}")
-            return {"status": False, "error": f"Error: {e}"}
+        return requests.patch(url, json=payload, headers=headers)
 
     def get_guild_members(self, guild_id: int, limit: int = 1000, after: int = None):
         """Retrieve the list of guild members from a Discord server."""
@@ -445,3 +355,17 @@ class ApiActions:
         except requests.RequestException as e:
             self.logger.error(f"Request error while deleting invites: {e}")
             return {"status": False, "error": f"Error: {e}"}
+
+    @retry_request
+    def leave_guild(self, guild_id: int):
+        """
+        Leave a Discord guild (server).
+        :param guild_id: The ID of the guild to leave.
+        """
+        url = f"{self.api_base_url}/users/@me/guilds/{guild_id}"
+        return requests.delete(
+            url,
+            headers={
+                "Authorization": f"Bot {self.bot_token}",
+            },
+        )

@@ -1,4 +1,4 @@
-class cooldown_immune:
+class CooldownImmune:
     def __init__(self, ctx, user_id=0):
         self.ctx = ctx
         self.user_id = user_id

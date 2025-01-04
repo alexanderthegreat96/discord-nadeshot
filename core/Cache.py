@@ -211,7 +211,9 @@ class Cache:
         except Exception as e:
             return {"status": False, "error": f"Error dequeuing item: {e}"}
 
-    def process_queue(self, queue_name: str, process_func, is_unique: bool = False, timeout: int = 0):
+    def process_queue(
+        self, queue_name: str, process_func, is_unique: bool = False, timeout: int = 0
+    ):
         """
         Continuously dequeue items and process them using the provided function.
         After all items are processed, clear the unique tracking set associated with the queue.
@@ -227,7 +229,6 @@ class Cache:
         while True:
             item = self.dequeue_item(queue_name, timeout)
             if item["status"]:
-
                 try:
                     process_func(item["item"])
                     logging.info(f"Processed item: {item['item']}")
@@ -239,11 +240,15 @@ class Cache:
 
         if is_unique:
             try:
+
                 def _clear_set():
                     """Inner function to clear the unique set in Redis."""
                     if self.__redis.type(unique_set_name) == b"set":
                         self.__redis.delete(unique_set_name)
-                        return {"status": True, "message": f"Unique set '{unique_set_name}' cleared."}
+                        return {
+                            "status": True,
+                            "message": f"Unique set '{unique_set_name}' cleared.",
+                        }
                     else:
                         return {
                             "status": False,
