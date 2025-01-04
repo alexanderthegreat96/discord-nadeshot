@@ -366,8 +366,11 @@ class Bot:
                 # await ctx.send("```Unknown command. Run: [/dth help] for a full list of commands.```")
                 pass
             else:
+                error_traceback = "".join(
+                    traceback.format_exception(type(error), error, error.__traceback__)
+                )
                 error_handler = ErrorHandler(
-                    ctx.message.content, str(error), self.logging
+                    ctx.message.content, str(error), error_traceback, self.logging
                 )
                 await error_handler.main()
                 await ctx.send(
