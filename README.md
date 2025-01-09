@@ -275,8 +275,7 @@ This ensures a clean and efficient command structure while allowing multiple bot
 ---
 
 #### Example Configuration for `multi-bot.json`
-
-Here’s an example of how to structure your `multi-bot.json` file:
+Heres an example of how to structure your `multi-bot.json` file:
 
 ```json
 {
@@ -294,6 +293,16 @@ Here’s an example of how to structure your `multi-bot.json` file:
         }
     ]
 }
+
+```
+
+**Explanation**:
+
+- **`server_id`**: The unique identifier for the Discord server where this configuration applies. Each Discord server (guild) has a distinct `server_id` that allows bots to recognize and interact with it appropriately.
+
+- **`bot-variants.primary`**: Specifies the bot variant designated as the primary handler for commands in the specified server. This bot will actively process commands, ensuring that only one bot responds to user inputs, preventing command overlap.
+
+- **`bot-variants.others`**: Lists the bot variants present in the server that should not process commands. These bots will remain in the server but will ignore command inputs, allowing for their presence without causing interference or duplicate responses.
 
 
 ### Finale
