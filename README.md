@@ -222,6 +222,12 @@ Here’s how you would define arguments for a command in the `commands.json` fil
 ## Components
 There are several other components that can be used to manipulate responses, handle discord object data, interact with the API directly, handle environment variables, interact with redis and so on.
 
+ - ### authorization.admin,root,moderator
+   - Contains the code that is getting run each time you add the ```authorization``` directive in your ```config/commands.json```. Additional database logic can be used in here
+ - ### utils.cooldown_immune
+   - Contains a class which you can tap in if you wish to setup personalized cooldowns for your users
+ - ### utils.error_handler
+   - Contains a class which gets called during errors. This can be used to actually tap into errors and do something with them
  - ### core.EnvParser
    - This is my custom implementation for reading environment variables. I wanted something that has 0 dependencies and supports a few more features than traditional packages
  - ### core.Api.ApiActions
