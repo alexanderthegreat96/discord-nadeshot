@@ -245,5 +245,56 @@ There are several other components that can be used to manipulate responses, han
 - ### utils.DiscordServer
     - A wrapper for the Guild / Server object from context.
 
+### Multi-Bot Handler
+
+Discord’s restrictions on `Intents` for verified apps and other limitations make it challenging to deploy large-scale bots efficiently. To address this, I implemented a multi-bot system that allows multiple bot variants to coexist in servers without overlapping or redundant command handling.
+
+#### Use Case:
+- **Homebase Concept**: A primary bot serves as the main handler for commands in a specified server (homebase).
+- **Secondary Variants**: Additional bot variants can be invited to servers as needed without all bots responding to the same command simultaneously.
+
+This ensures a clean and efficient command structure while allowing multiple bot instances to exist in the same environment.
+
+---
+
+#### Steps to Set Up:
+1. **Obtain Additional Tokens**:
+   - Acquire multiple bot tokens to deploy multiple variants.
+
+2. **Deploy Bot Variants**:
+   - Deploy each bot instance using its unique token.
+
+3. **Configure Multi-Bot Settings**:
+   - Add your configuration to `config/multi-bot.json` (see example below).
+   - Enable the `enable_multiple_bots` option in `config/bot.json`.
+
+4. **Environment Setup**:
+   - Define each bot's `BOT_VARIANT` in its environment (e.g., `.env` file).
+   - Deploy each bot instance into its container or environment.
+
+---
+
+#### Example Configuration for `multi-bot.json`
+
+Here’s an example of how to structure your `multi-bot.json` file:
+
+```json
+{
+    "servers": [
+        {
+            "server_id": 1167179502175137813,
+            "bot-variants": {
+                "primary": "BOT_VARIANT_ENV_VALUE_FROM_ENV",
+                "others": [
+                    "OTHER_BOT_VARIANT_ENV_VALUE_FROM_ENV",
+                    "SECOND-VARIANT",
+                    "THIRD-VARINT"
+                ]
+            }
+        }
+    ]
+}
+
+
 ### Finale
 Please go ahead and explore. There are more things that can be done. If you cannnot do something, just go ahead and open up an issue.

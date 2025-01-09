@@ -1,0 +1,15 @@
+{
+    "servers": [
+        {
+            "server_id": 1167179502175137813,
+            "bot-variants": {
+                "primary": "BOT_VARIANT_ENV_VALUE_FROM_ENV",
+                "others": [
+                    "OTHER_BOT_VARIANT_ENV_VALUE_FROM_ENV",
+                    "SECOND-VARIANT",
+                    "THIRD-VARINT"
+                ]
+            }
+        }
+    ]
+}

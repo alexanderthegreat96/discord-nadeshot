@@ -13,6 +13,7 @@
     "enable-server-age": true,
     "server-age-limit": 60,
     "enable-user-age": true,
-    "user-age-limit": 60
+    "user-age-limit": 60,
+    "enable-multiple-bots": false
   }
 }
