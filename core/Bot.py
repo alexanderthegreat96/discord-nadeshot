@@ -24,6 +24,7 @@ from core.EnvParser import EnvParser
 from core.Cache import Cache
 from core.MultiBotHandler import MultiBotHandler
 
+
 class Bot:
     def __init__(
         self,
@@ -45,8 +46,8 @@ class Bot:
         )
         self.commands = commands  # holds the commands
         self.tasks: dict = {}  # holds the tasks
-        self.cache : Cache = Cache() # redis connectivity for dealing with caching
-        self.multi_bot_handler: MultiBotHandler  = MultiBotHandler()
+        self.cache: Cache = Cache()  # redis connectivity for dealing with caching
+        self.multi_bot_handler: MultiBotHandler = MultiBotHandler()
 
         self.logging: Logger = Logger(
             self.env.get("BOT_NAME", default="Nadeshot")
@@ -124,16 +125,17 @@ class Bot:
             self.logging.error(f"Unable to load config/commands.json. Error: {e}")
             return None
 
-    def should_ignore_commands_from_variants(self, server_id : int) -> bool:
+    def should_ignore_commands_from_variants(self, server_id: int) -> bool:
         # will use redis caching to store bot status within a server
         # if a server has more than 1 variants
         # the rest should skip the commands
         config = self.bot_config()
-        
+
         if config["enable-multiple-bots"]:
             return self.multi_bot_handler.should_ignore_commands(server_id)
 
         return False
+
     def task_list(self):
         try:
             f = open(from_root("config/tasks.json"), "r")
@@ -459,13 +461,13 @@ class Bot:
             skip_commands = ["/", "!"]
 
             skip_strings = self.__skip_strings(skip_commands, message.content)
-            
+
             # if a different variant of the bot exists in the server
             # return null
-            
+
             if self.should_ignore_commands_from_variants():
                 return
-            
+
             if message.author == self.bot.user:
                 return
 
