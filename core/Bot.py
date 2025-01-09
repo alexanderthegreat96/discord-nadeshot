@@ -1,28 +1,31 @@
-from discord.ext import commands, tasks
-from discord.ext.commands import cooldown, BucketType
-from discord import app_commands
-import discord
-import time
-import json
-from os import path
+# Standard library imports
+import asyncio
 import importlib
 import importlib.util
+import json
 import sys
-import types
-from utils.discord_user import DiscordUser
-from core.CommandLineArgumentParser import CommandLineArgumentParser
-import traceback
-from from_root import from_root
-from utils.cooldown_immune import CooldownImmune
-from core.Logger import Logger
-from utils.error_handler import ErrorHandler
-from concurrent.futures import ThreadPoolExecutor
-import asyncio
+import time
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor
+from os import path
 from typing import Callable, Coroutine
-from core.EnvParser import EnvParser
+import traceback
+import types
+
+# Third-party library imports
+import discord
+from discord.ext import commands, tasks
+from from_root import from_root
+
+# Local application imports
 from core.Cache import Cache
+from core.CommandLineArgumentParser import CommandLineArgumentParser
+from core.EnvParser import EnvParser
+from core.Logger import Logger
 from core.MultiBotHandler import MultiBotHandler
+from utils.cooldown_immune import CooldownImmune
+from utils.discord_user import DiscordUser
+from utils.error_handler import ErrorHandler
 
 
 class Bot:
@@ -35,7 +38,7 @@ class Bot:
         self.bot_name = self.env.get("BOT_NAME", default=self.config["bot-name"])
 
         self.bot = commands.Bot(
-            command_prefix="/",
+            command_prefix=self.config["bot-command-prefix"],
             activity=discord.Activity(
                 type=discord.ActivityType.listening,
                 name=self.config["bot-listens-to"],

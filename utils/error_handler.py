@@ -1,5 +1,6 @@
 from core.Logger import Logger
 
+
 class ErrorHandler:
     def __init__(
         self, message: str, error: str, traceback: str, logger: Logger
