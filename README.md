@@ -1,4 +1,4 @@
-# Discord Nadeshot v1.5
+# Discord Nadeshot v1.6
 
 **Discord Nadeshot** is a high-performance, modular Discord bot framework built from scratch. It offers powerful features for managing commands, events, and tasks with a flexible architecture, ideal for collaborative development and control over every aspect of your bot’s behavior.
 
