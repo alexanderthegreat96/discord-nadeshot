@@ -62,10 +62,7 @@ After setting up, you can further tweak your bot's settings by editing the `conf
     "enable-global-errors": true,
     "enable-automatic-command-helper": false,
     "development-mode": true,
-    "enable-server-age": true,
-    "server-age-limit": 60,
-    "enable-user-age": true,
-    "user-age-limit": 60
+    "enable-multiple-bots": false
   }
 }
 ```
@@ -76,7 +73,10 @@ To speed up development, the framework includes a built-in boilerplate generator
 To generate a new command:
 ```bash 
 py bin/console.py generate-command my-command-name/sub-command-name
+py bin/comsole.py generate-cmmand --command-name my-new-command/some-sub-command --command-prefix ! 
 ```
+
+If you provide a different command prefix, like ```?``` or ```!```, you have to specify this in ```config/bot.json``` by editing ```bot-command-prefix```.
 
 ### Task Generation
 To generate a new task:
