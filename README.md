@@ -66,8 +66,7 @@ After setting up, you can further tweak your bot's settings by editing the `conf
   }
 }
 ```
-### Configuration Exmplanation
-# Configuration Keys Explained
+### Configuration Keys Explained
 
 | Key                              | Description                                                      | Example Value                          |
 |----------------------------------|------------------------------------------------------------------|----------------------------------------|
@@ -323,9 +322,9 @@ Heres an example of how to structure your `multi-bot.json` file:
 
 - **`server_id`**: The unique identifier for the Discord server where this configuration applies. Each Discord server (guild) has a distinct `server_id` that allows bots to recognize and interact with it appropriately.
 
-- **`bot-variants.primary`**: Specifies the bot variant designated as the primary handler for commands in the specified server. This bot will actively process commands, ensuring that only one bot responds to user inputs, preventing command overlap.
+- **`bot-variants.primary`**: Specifies the bot variant designated as the primary handler for commands in the specified server. This bot will actively process commands, ensuring that only one bot responds to user inputs, preventing command overlap. This value is equal to the ENV Value: ```BOT_VARIANT```
 
-- **`bot-variants.others`**: Lists the bot variants present in the server that should not process commands. These bots will remain in the server but will ignore command inputs, allowing for their presence without causing interference or duplicate responses.
+- **`bot-variants.others`**: Lists the bot variants present in the server that should not process commands. These bots will remain in the server but will ignore command inputs, allowing for their presence without causing interference or duplicate responses. These values are equal to the ENV Values: ```BOT_VARIANT```
 
 
 ### Finale
