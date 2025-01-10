@@ -6,8 +6,9 @@ from from_root import from_root
 
 
 class GenerateCommand:
-    def __init__(self, input=None):
+    def __init__(self, input=None, prefix="/"):
         self.input = input
+        self.prefix = prefix
         # generate commands.json in case it doesn't exist
 
         if not path.exists(from_root("config/commands.json")):
@@ -303,7 +304,7 @@ class """
                 file_path = command + ".py"
                 command_array = {
                     command: {
-                        "syntax": "/" + command_string,
+                        "syntax": self.prefix + command_string,
                         "description": "Awaiting developer description",
                         "filePath": file_path,
                         "authorization": [],

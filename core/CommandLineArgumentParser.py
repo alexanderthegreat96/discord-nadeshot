@@ -6,6 +6,15 @@ from from_root import from_root
 class CommandLineArgumentParser:
     def __init__(self, commandinput=""):
         self.input = self.process_string(commandinput)
+        self.commands_list = self.commands()
+
+    def bot_config(self):
+        try:
+            f = open(from_root("config/bot.json"), "r")
+            data = json.load(f)
+            return data["config"]
+        except Exception:
+            return None
 
     def calculate_symmetric_difference(self, syntax_to_array, input_to_array):
         symmetric_difference = []
@@ -711,7 +720,14 @@ class CommandLineArgumentParser:
                     self.input, arguments, syntax
                 )
             else:
-                syntax_to_array = syntax.replace("/", "").split(" ")
+                replace_char_from_syntax: str = (
+                    self.bot_config()["bot-command-prefix"]
+                    if self.bot_config()
+                    else "/"
+                )
+                syntax_to_array = syntax.replace(replace_char_from_syntax, "").split(
+                    " "
+                )
 
                 if len(syntax_to_array) > 1:
                     command_arg = syntax_to_array[-1]
@@ -761,7 +777,7 @@ class CommandLineArgumentParser:
 
     def pull_commands_in_the_same_array(self, commands=None, data=None):
         if not commands:
-            commands = self.commands()
+            commands = self.commands_list
 
         if not data:
             data = []
@@ -973,7 +989,7 @@ class CommandLineArgumentParser:
 
     def build_command_helper(self, commands=None, data=None):
         if not commands:
-            commands = self.commands()
+            commands = self.commands_list
 
         if not data:
             data = []
@@ -1026,7 +1042,7 @@ class CommandLineArgumentParser:
     def parse(self):
         check_errors, check_status = self.check_commands_integrity()
         if check_status:
-            commands = self.commands()
+            commands = self.commands_list
             results = []
 
             if commands:

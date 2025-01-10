@@ -1,13 +1,23 @@
 {
     "servers": [
         {
-            "server_id": 1167179502175137813,
+            "server_id": 0,
             "bot-variants": {
                 "primary": "BOT_VARIANT_ENV_VALUE_FROM_ENV",
                 "others": [
                     "OTHER_BOT_VARIANT_ENV_VALUE_FROM_ENV",
                     "SECOND-VARIANT",
                     "THIRD-VARINT"
+                ]
+            }
+        },
+        {
+            "server_id": 1,
+            "bot-variants": {
+                "primary": "your-bot-master",
+                "others": [
+                    "your-bot-slave-v",
+                    "bot-slave-third-variant"
                 ]
             }
         }

@@ -15,11 +15,23 @@ def commands():
 
 
 @click.command()
-@click.option("--name", default="my-command-name", help="Specify the command name")
+@click.option(
+    "--command-name", default="my-command-name", help="Specify the command name"
+)
+@click.option(
+    "--command-prefix", default="/", help="Specifi the command prefix. Default: /"
+)
 @click.argument("command-name")
-def generate_command(name, command_name):
+@click.argument("command-prefix")
+def generate_command(command_name: str, command_prefix: str):
+    allowed_prefixes: list = ["!", ".", "?", "/", ">"]
+    if command_prefix not in allowed_prefixes:
+        print(
+            f"Command prefix provided: {command_prefix} is not supported. Please use one of these: {allowed_prefixes}"
+        )
+        return
     print("Generating command name: " + command_name)
-    generator = GenerateCommand(command_name)
+    generator = GenerateCommand(command_name, command_prefix)
     generator.save_command()
 
 
