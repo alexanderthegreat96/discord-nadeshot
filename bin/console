@@ -1,0 +1,71 @@
+#!/usr/bin/python
+import click
+from art import *
+from commands.CommandGenerator import GenerateCommand
+from commands.TaskGenerator import TaskGeneratorCommand
+from commands.MiddlewareGenerator import MiddlewareGeneratorCommand
+
+tprint("Nadeshot CLI")
+@click.group()
+def commands():
+    pass
+
+
+@click.command()
+@click.option("--name", default="my-command-name", help="Specify the command name")
+@click.option("--prefix", default="/", help="Specifi the command prefix. Default: /")
+@click.argument("name")
+@click.argument("prefix")
+def generate_command(name: str, prefix: str):
+    parts: list = name.strip().split(" ")
+    if "-" in parts[0]:
+        print(
+            "Cannot generate a command where the first portion contains a dash.\n"
+            "Discord's limitation regarding command line structure does not allow it."
+        )
+        return
+    allowed_prefixes: list = ["!", ".", "?", "/", ">"]
+    if prefix not in allowed_prefixes:
+        print(
+            f"Command prefix provided: {prefix} is not supported. Please use one of these: {allowed_prefixes}"
+        )
+        return
+    print(f"Generating command name: {name}")
+    generator = GenerateCommand(name, prefix)
+    generator.save_command()
+
+
+@click.command()
+@click.option("--name", default="my-task-name", help="Specify the task name")
+@click.argument("name")
+def generate_task(name):
+    print(f"Generating Task: {name}")
+    generator = TaskGeneratorCommand(name)
+    generator.generate_task_entry(name)
+
+
+@click.command()
+@click.option(
+    "--name", default="my-middleware-name", help="Specify the middleware name"
+)
+@click.option(
+    "--kind",
+    default="before",
+    help="The kind of middleware. Takes either: [before or after]",
+)
+@click.argument("name")
+@click.argument("kind")
+def generate_middleware(name: str, kind: str):
+    if kind.lower() not in ["before", "after"]:
+        print(f"Type only accepts one of 2 values: [before, after]. Received: {kind}")
+        return
+
+    print(f"Generating a new middleware: {name} of type: {kind}.")
+    generator = MiddlewareGeneratorCommand(name, kind)
+    generator.generate()
+
+
+commands.add_command(generate_command)
+commands.add_command(generate_task)
+commands.add_command(generate_middleware)
+commands()

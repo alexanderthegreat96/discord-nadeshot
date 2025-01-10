@@ -1,7 +1,7 @@
 services:
-  discord-nadeshot-bot:
+  discord-nadeshot-bot-dev:
     entrypoint: ./watcher-docker
-    container_name: "discord-nadeshot-bot"
+    container_name: "discord-nadeshot-bot-dev"
     build:
       context: .
       dockerfile: Dockerfile

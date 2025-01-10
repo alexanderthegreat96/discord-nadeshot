@@ -3,9 +3,12 @@ __author__ = "alexanderdth"
 __license__ = "MIT"
 __maintainer__ = "alexanderdth"
 __status__ = "stable"
-__name__ = "dth-nadeshot-beta"
+__name__ = "nadeshot"
 
 from core.Bot import Bot
+from art import *
+
+tprint("Nadeshot v2.0")
 
 system = Bot()
 commands = system.command_list()

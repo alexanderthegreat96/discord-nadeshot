@@ -1,56 +1,40 @@
 {
   "commands": {
-    "build": {
+    "Second": {
+      "syntax": "!second",
+      "description": "Awaiting developer description",
+      "filePath": "Second.py",
+      "authorization": [],
+      "hasValue": false,
+      "slashCommand": false,
+      "middlewares": [],
+      "arguments": {}
+    },
+    "Third": {
+      "syntax": "?third",
+      "description": "Awaiting developer description",
+      "filePath": "Third.py",
+      "authorization": [],
+      "hasValue": false,
+      "slashCommand": false,
+      "middlewares": [],
+      "arguments": {}
+    },
+    "first": {
       "commands": {
-        "Track": {
-          "syntax": "/build track",
+        "Sub": {
+          "syntax": "/first sub",
           "description": "Awaiting developer description",
-          "filePath": "build/Track.py",
+          "filePath": "first/Sub.py",
           "authorization": [],
           "hasValue": false,
           "slashCommand": false,
           "middlewares": [
-            "before_track",
-            "after_track"
+            "before_command"
           ],
-          "arguments": {
-            "xbox": {
-              "required": true,
-              "hasValue": true
-            }
-          }
-        },
-        "TestThis": {
-          "syntax": "/build test-this",
-          "description": "Awaiting developer description",
-          "filePath": "build/TestThis.py",
-          "authorization": [],
-          "hasValue": false,
-          "slashCommand": false,
-          "middlewares": [],
           "arguments": {}
         }
       }
-    },
-    "Test": {
-      "syntax": "/test",
-      "description": "Awaiting developer description",
-      "filePath": "Test.py",
-      "authorization": [],
-      "hasValue": false,
-      "slashCommand": false,
-      "middlewares": [],
-      "arguments": {}
-    },
-    "Alex": {
-      "syntax": "/alex",
-      "description": "Awaiting developer description",
-      "filePath": "Alex.py",
-      "authorization": [],
-      "hasValue": false,
-      "slashCommand": false,
-      "middlewares": [],
-      "arguments": {}
     }
   }
 }

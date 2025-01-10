@@ -5,6 +5,7 @@ import importlib.util
 import json
 import sys
 import time
+import re
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from os import path
@@ -26,6 +27,7 @@ from core.MultiBotHandler import MultiBotHandler
 from utils.cooldown_immune import CooldownImmune
 from utils.discord_user import DiscordUser
 from utils.error_handler import ErrorHandler
+from utils.synced import Synced
 
 
 class Bot:
@@ -36,9 +38,10 @@ class Bot:
         self.config = self.bot_config()
         self.bot_token = self.env.get("BOT_TOKEN", default="Hahahaha")
         self.bot_name = self.env.get("BOT_NAME", default=self.config["bot-name"])
+        self.command_prefixes: list = ["!", ".", "?", "/", ">"]
 
-        self.bot = commands.Bot(
-            command_prefix=self.config["bot-command-prefix"],
+        self.bot: commands.Bot = commands.Bot(
+            command_prefix=self.command_prefixes,
             activity=discord.Activity(
                 type=discord.ActivityType.listening,
                 name=self.config["bot-listens-to"],
@@ -62,6 +65,22 @@ class Bot:
         self.channel_queues: defaultdict[
             int, asyncio.Queue[Callable[[], Coroutine[None, None, None]]]
         ] = defaultdict(asyncio.Queue)
+
+    def get_command_prefix_from_message(self, ctx: commands.Context):
+        if not ctx:
+            return "/"
+
+        message: str = ctx.message.content
+        if message:
+            return message[0]
+
+        return "/"
+
+    def to_camel_case(self, input_string: str) -> str:
+        # Split the string using dashes, underscores, or dots as delimiters
+        parts = re.split(r"[-_.]", input_string)
+        # Capitalize each part and join them together
+        return "".join(part.capitalize() for part in parts)
 
     # processing commands from multple users in the same channel
     # this prevents responses / events from overlapping
@@ -298,7 +317,7 @@ class Bot:
                     commandContents = self.path_import(
                         "middlewares/" + middleware + ".py"
                     )
-                    className = getattr(commandContents, middleware)
+                    className = getattr(commandContents, self.to_camel_case(middleware))
                     run = className(ctx, command_data)
                     output = run.main()
 
@@ -461,24 +480,26 @@ class Bot:
 
         @self.bot.event
         async def on_message(message):
-            skip_commands = ["/", "!"]
-
-            skip_strings = self.__skip_strings(skip_commands, message.content)
-
-            # if a different variant of the bot exists in the server
-            # return null
-
-            if self.should_ignore_commands_from_variants():
-                return
-
+            # skip self messages
             if message.author == self.bot.user:
                 return
 
+            # skip bot messages
             if message.author.bot:
                 return
 
-            if not skip_strings and message.guild:
-                if path.exists(from_root("events/on_message.py")):
+            # skip commands in normal messages
+            if not any(
+                message.content.startswith(prefix) for prefix in self.command_prefixes
+            ):
+                # if a different variant of the bot exists in the server
+                # return null
+                # just ignore dms
+                if message.guild and message.guild.id != 0:
+                    if self.should_ignore_commands_from_variants(message.guild.id):
+                        return
+
+                if message.guild and path.exists(from_root("events/on_message.py")):
                     event_contents = self.path_import("events/on_message.py")
                     class_name = getattr(event_contents, "OnMessage")
                     run = class_name(message, self.bot)
@@ -487,7 +508,6 @@ class Bot:
             await self.bot.process_commands(message)
 
         command_list = self.command_list()
-
         if command_list and commandName in command_list:
             if "commands" not in command_list[commandName]:
                 self.logging.info(f"{commandName} has no subcommands.")
@@ -502,6 +522,11 @@ class Bot:
             )
             @self.bot.command(name=commandName, pass_context=True)
             async def item(ctx, *args):
+                # will use synced responses
+                # to prevent message / outputs / embeds overlapping
+                # this is handled on a per-user + per channel basis
+                # works like a queue system
+                response: Synced = Synced(ctx)
                 # handle global middlewares
                 if (
                     "middlewares" in command_list[commandName]
@@ -520,12 +545,12 @@ class Bot:
 
                     if before:
                         middleware_status, middleware_error, middleware_message = (
-                            self.run_middleware(ctx, before)
+                            self.run_middleware(ctx, before, command_list[commandName])
                         )
 
                     if middleware_status:
                         if middleware_message:
-                            await ctx.channel.send(middleware_message)
+                            await response.send(middleware_message)
 
                         if (
                             "help" in args
@@ -559,20 +584,21 @@ class Bot:
                                             name=name, value=values, inline=False
                                         )
 
-                                    await ctx.channel.send(embed=nadeshotEmbed)
+                                    await response.send(nadeshotEmbed)
                             else:
-                                await ctx.channel.send(
+                                await response.send(
                                     "```Automatic command helper is disabled due to multi-user-type permissions.\n"
-                                    "You could use /whatever-command help. That's where helpers are generally stored.```"
+                                    f"You could use [{self.get_command_prefix_from_message(ctx)}whatever-command help]. That's where helpers are generally stored.```"
                                 )
                         else:
                             providedArguments = (
-                                self.config["bot-command-prefix"]
+                                self.get_command_prefix_from_message(ctx)
                                 + ""
                                 + commandName
                                 + " "
                                 + " ".join(args)
                             )
+
                             parser = CommandLineArgumentParser(providedArguments)
                             validation = parser.parse()
 
@@ -590,7 +616,7 @@ class Bot:
                                     authorize = self.authorize(ctx, authorization)
 
                                 if not authorize:
-                                    await ctx.channel.send(
+                                    await response.send(
                                         "```This command requires special authorization.```"
                                     )
                                 else:
@@ -616,7 +642,7 @@ class Bot:
 
                                     if middleware_status:
                                         if middleware_message:
-                                            await ctx.channel.send(middleware_message)
+                                            await response.send(middleware_message)
                                         try:
                                             commandContents = self.path_import(
                                                 "commands/" + validation["file"]
@@ -635,7 +661,7 @@ class Bot:
                                                 await run.main()
                                             except Exception as e:
                                                 if self.config["development-mode"]:
-                                                    await ctx.channel.send(
+                                                    await response.send(
                                                         "```Error running class: "
                                                         + str(e)
                                                         + "\n"
@@ -643,12 +669,12 @@ class Bot:
                                                         + "```"
                                                     )
                                                 else:
-                                                    await ctx.channel.send(
+                                                    await response.send(
                                                         "```System Error. Contact developer```"
                                                     )
                                         except Exception as e:
                                             if self.config["development-mode"]:
-                                                await ctx.channel.send(
+                                                await response.send(
                                                     "```Error importing class: "
                                                     + str(e)
                                                     + "\n"
@@ -656,11 +682,11 @@ class Bot:
                                                     + "```"
                                                 )
                                             else:
-                                                await ctx.channel.send(
+                                                await response.send(
                                                     "```System Error. Contact developer```"
                                                 )
                                     else:
-                                        await ctx.channel.send(
+                                        await response.send(
                                             "```Error: " + middleware_error + "```"
                                         )
 
@@ -671,14 +697,12 @@ class Bot:
                                             run_after_message,
                                         ) = self.run_middleware(ctx, after, validation)
                                         if not run_after_status:
-                                            await ctx.channel.send(
+                                            await response.send(
                                                 "```Error: " + run_after_error + "```"
                                             )
                                         else:
                                             if run_after_message:
-                                                await ctx.channel.send(
-                                                    run_after_message
-                                                )
+                                                await response.send(run_after_message)
 
                             else:
                                 nadeshotEmbed = discord.Embed(
@@ -722,21 +746,19 @@ class Bot:
                                         inline=False,
                                     )
 
-                                await ctx.channel.send(embed=nadeshotEmbed)
+                                await response.send(nadeshotEmbed)
                     else:
-                        await ctx.channel.send("```Error: " + middleware_error + "```")
+                        await response.send("```Error: " + middleware_error + "```")
 
                     if after:
                         run_after_status, run_after_error, run_after_message = (
                             self.run_middleware(ctx, after)
                         )
                         if not run_after_status:
-                            await ctx.channel.send(
-                                "```Error: " + run_after_error + "```"
-                            )
+                            await response.send("```Error: " + run_after_error + "```")
                         else:
                             if run_after_message:
-                                await ctx.channel.send(run_after_message)
+                                await response.send(run_after_message)
 
                 else:
                     # if no global middlewares are set
@@ -773,20 +795,21 @@ class Bot:
                                         name=name, value=values, inline=False
                                     )
 
-                                await ctx.channel.send(embed=nadeshotEmbed)
+                                await response.send(nadeshotEmbed)
                         else:
-                            await ctx.channel.send(
+                            await response.send(
                                 "```Automatic command helper is disabled due to multi-user-type permissions.\n"
-                                "You could use /whatever-command help. That's where helpers are generally stored.```"
+                                f"You could use [{self.get_command_prefix_from_message(ctx)}whatever-command help]. That's where helpers are generally stored.```"
                             )
                     else:
                         providedArguments = (
-                            self.config["bot-command-prefix"]
+                            self.get_command_prefix_from_message(ctx)
                             + ""
                             + commandName
                             + " "
                             + " ".join(args)
                         )
+
                         parser = CommandLineArgumentParser(providedArguments)
                         validation = parser.parse()
 
@@ -804,7 +827,7 @@ class Bot:
                                 authorize = self.authorize(ctx, authorization)
 
                             if not authorize:
-                                ctx.channel.send(
+                                response.send(
                                     "```This command requires special authorization.```"
                                 )
                             else:
@@ -828,7 +851,7 @@ class Bot:
 
                                 if middleware_status:
                                     if middleware_message:
-                                        await ctx.channel.send(middleware_message)
+                                        await response.send(middleware_message)
                                     try:
                                         commandContents = self.path_import(
                                             "commands/" + validation["file"]
@@ -847,7 +870,7 @@ class Bot:
                                             await run.main()
                                         except Exception as e:
                                             if self.config["development-mode"]:
-                                                await ctx.channel.send(
+                                                await response.send(
                                                     "```Error running class: "
                                                     + str(e)
                                                     + "\n"
@@ -855,12 +878,12 @@ class Bot:
                                                     + "```"
                                                 )
                                             else:
-                                                await ctx.channel.send(
+                                                await response.send(
                                                     "```System Error. Contact developer```"
                                                 )
                                     except Exception as e:
                                         if self.config["development-mode"]:
-                                            await ctx.channel.send(
+                                            await response.send(
                                                 "```Error importing class: "
                                                 + str(e)
                                                 + "\n"
@@ -868,11 +891,11 @@ class Bot:
                                                 + "```"
                                             )
                                         else:
-                                            await ctx.channel.send(
+                                            await response.send(
                                                 "```System Error. Contact developer```"
                                             )
                                 else:
-                                    await ctx.channel.send(
+                                    await response.send(
                                         "```Error: " + middleware_error + "```"
                                     )
 
@@ -883,12 +906,12 @@ class Bot:
                                         run_after_message,
                                     ) = self.run_middleware(ctx, after, validation)
                                     if not run_after_status:
-                                        await ctx.channel.send(
+                                        await response.send(
                                             "```Error: " + run_after_error + "```"
                                         )
                                     else:
                                         if run_after_message:
-                                            await ctx.channel.send(run_after_message)
+                                            await response.send(run_after_message)
 
                         else:
                             nadeshotEmbed = discord.Embed(
@@ -930,7 +953,7 @@ class Bot:
                                     inline=False,
                                 )
 
-                            await ctx.channel.send(embed=nadeshotEmbed)
+                            await response.send(nadeshotEmbed)
 
     def boot(self):
         try:

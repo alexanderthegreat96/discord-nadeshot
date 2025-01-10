@@ -3,8 +3,7 @@ from utils.synced import Synced
 from utils.discord_server import DiscordServer
 from utils.discord_user import DiscordUser
 
-
-class Test:
+class Sub:
     def __init__(
         self,
         bot: commands.Bot,
@@ -27,6 +26,5 @@ class Test:
         await self.response.send(
             f"```Hi, {self.discord_user.username}, you are running the command from {self.discord_server.server_name}```"
         )
-        await self.response.send(
-            "```This is the Test command output within commands folder.```"
-        )
+        await self.response.send("```This is the Sub command output within commands folder.```")
+                    

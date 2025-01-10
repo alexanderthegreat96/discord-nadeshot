@@ -7,14 +7,22 @@ class CommandLineArgumentParser:
     def __init__(self, commandinput=""):
         self.input = self.process_string(commandinput)
         self.commands_list = self.commands()
+        self.command_prefixes: list = ["!", ".", "?", "/", ">"]
 
-    def bot_config(self):
-        try:
-            f = open(from_root("config/bot.json"), "r")
-            data = json.load(f)
-            return data["config"]
-        except Exception:
-            return None
+    def process_syntax(self, syntax: str) -> list:
+        # Find the matching prefix from the command_prefixes list
+        matched_prefix = next(
+            (prefix for prefix in self.command_prefixes if syntax.startswith(prefix)),
+            None,
+        )
+
+        # If a prefix is found, remove it; otherwise, keep the syntax as is
+        if matched_prefix:
+            syntax = syntax.replace(matched_prefix, "", 1).strip()
+
+        # Convert the remaining syntax to an array of words
+        syntax_to_array = syntax.split(" ")
+        return syntax_to_array
 
     def calculate_symmetric_difference(self, syntax_to_array, input_to_array):
         symmetric_difference = []
@@ -720,14 +728,7 @@ class CommandLineArgumentParser:
                     self.input, arguments, syntax
                 )
             else:
-                replace_char_from_syntax: str = (
-                    self.bot_config()["bot-command-prefix"]
-                    if self.bot_config()
-                    else "/"
-                )
-                syntax_to_array = syntax.replace(replace_char_from_syntax, "").split(
-                    " "
-                )
+                syntax_to_array = self.process_syntax(syntax)
 
                 if len(syntax_to_array) > 1:
                     command_arg = syntax_to_array[-1]

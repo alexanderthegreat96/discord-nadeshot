@@ -1,4 +1,4 @@
-# Discord Nadeshot v1.7
+# Discord Nadeshot v2.0
 
 **Discord Nadeshot** is a high-performance, modular Discord bot framework built from scratch. It offers powerful features for managing commands, events, and tasks with a flexible architecture, ideal for collaborative development and control over every aspect of your bot’s behavior.
 
@@ -53,7 +53,6 @@ After setting up, you can further tweak your bot's settings by editing the `conf
 {
   "config": {
     "bot-name": "Nadeshot",
-    "bot-command-prefix": "/",
     "bot-listens-to": "/nade",
     "bot-description": "Run /nade help for a full list of commands",
     "enable-reset-cooldowns": true,
@@ -71,7 +70,6 @@ After setting up, you can further tweak your bot's settings by editing the `conf
 | Key                              | Description                                                      | Example Value                          |
 |----------------------------------|------------------------------------------------------------------|----------------------------------------|
 | **bot-name**                     | The name of the bot as it appears to users.                     | `"Nadeshot"`                           |
-| **bot-command-prefix**           | The prefix used to identify bot commands.                       | `"/"`                                  |
 | **bot-listens-to**               | A specific command or keyword the bot listens for as its primary interaction point. | `"/nade"`                              |
 | **bot-description**              | A short description or helper message for users.                | `"Run /nade help for a full list of commands"` |
 | **enable-reset-cooldowns**       | Allows resetting command cooldowns if enabled. Works on par with ```utils/cooldown_immune.py```                 | `true`                                 |
@@ -89,10 +87,8 @@ To speed up development, the framework includes a built-in boilerplate generator
 To generate a new command:
 ```bash 
 py bin/console.py generate-command my-command-name/sub-command-name
-py bin/comsole.py generate-cmmand --command-name my-new-command/some-sub-command --command-prefix ! 
+py bin/comsole.py generate-cmmand --name my-new-command/some-sub-command --prefix ! 
 ```
-
-If you provide a different command prefix, like ```?``` or ```!```, you have to specify this in ```config/bot.json``` by editing ```bot-command-prefix```.
 
 ### Task Generation
 To generate a new task:
@@ -103,6 +99,16 @@ py bin/console.py generate-task my-task-name
 The generated files will be placed in:
   - Commands: `commands` -> `config/commands.json`
   - Tasks: `tasks` -> `config/tasks.json`
+
+### Middleware Generation
+To generate a new middleware
+
+```bash
+py bin/console.py generate-middleware my-middleware before
+py bin/console.py generate-middleware my-middleware after
+```
+The generated files will be placed in:
+  - Middlewares: `middlewares`
 
 ## Example Configurations
 ### Commands Example
