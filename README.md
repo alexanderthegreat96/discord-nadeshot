@@ -66,6 +66,23 @@ After setting up, you can further tweak your bot's settings by editing the `conf
   }
 }
 ```
+### Configuration Exmplanation
+# Configuration Keys Explained
+
+| Key                              | Description                                                      | Example Value                          |
+|----------------------------------|------------------------------------------------------------------|----------------------------------------|
+| **bot-name**                     | The name of the bot as it appears to users.                     | `"Nadeshot"`                           |
+| **bot-command-prefix**           | The prefix used to identify bot commands.                       | `"/"`                                  |
+| **bot-listens-to**               | A specific command or keyword the bot listens for as its primary interaction point. | `"/nade"`                              |
+| **bot-description**              | A short description or helper message for users.                | `"Run /nade help for a full list of commands"` |
+| **enable-reset-cooldowns**       | Allows resetting command cooldowns if enabled. Works on par with ```utils/cooldown_immune.py```                 | `true`                                 |
+| **enable-cooldowns**             | Enables cooldowns for commands to prevent spamming.             | `true`                                 |
+| **cooldown-duration**            | Duration of the cooldown (in seconds).                          | `15`                                   |
+| **enable-global-errors**         | Enables global error handling to notify users of issues.        | `true`                                 |
+| **enable-automatic-command-helper** | Automatically provides helper messages for commands.           | `false`                                |
+| **development-mode**             | Enables development mode for debugging and testing.             | `true`                                 |
+| **enable-multiple-bots**         | Allows running multiple instances of the bot.                   | `false`                                |
+
 ## Command and Task Generation
 To speed up development, the framework includes a built-in boilerplate generator for both commands and tasks. This allows you to create new features without starting from scratch.
 
