@@ -3,6 +3,7 @@ from utils.synced import Synced
 from utils.discord_server import DiscordServer
 from utils.discord_user import DiscordUser
 
+
 class Second:
     def __init__(
         self,
@@ -21,10 +22,11 @@ class Second:
         self.response: Synced = Synced(ctx)
         self.discord_server: DiscordServer = DiscordServer(ctx)
         self.discord_user: DiscordUser = DiscordUser(ctx)
-        
+
     async def main(self) -> None:
         await self.response.send(
             f"```Hi, {self.discord_user.username}, you are running the command from {self.discord_server.server_name}```"
         )
-        await self.response.send("```This is the Second command output within commands folder.```")
-                        
+        await self.response.send(
+            "```This is the Second command output within commands folder.```"
+        )

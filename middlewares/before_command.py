@@ -2,6 +2,7 @@ from utils.guild_wrapper import GuildWrapper
 from utils.user_wrapper import UserWrapper
 from discord.ext.commands import Context
 
+
 class BeforeCommand:
     def __init__(self, ctx: Context, command_data: dict = None) -> None:
         self.server = GuildWrapper(ctx.guild)

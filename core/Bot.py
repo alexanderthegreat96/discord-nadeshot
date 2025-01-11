@@ -12,6 +12,7 @@ from os import path
 from typing import Callable, Coroutine
 import traceback
 import types
+from typing import Any, Dict, List, Union, Iterable
 
 # Third-party library imports
 import discord
@@ -65,6 +66,82 @@ class Bot:
         self.channel_queues: defaultdict[
             int, asyncio.Queue[Callable[[], Coroutine[None, None, None]]]
         ] = defaultdict(asyncio.Queue)
+
+    def array_merge(
+        self,
+        container: Union[List[Any], Dict[str, List[Any]]],
+        key: str = None,
+        value: Union[Any, Iterable[Any]] = None,
+    ) -> None:
+        """
+        Merge unique values into a list or dictionary.
+
+        If `value` is an iterable, each unique item is appended.
+        Ensures no duplicate values within the target list.
+
+        Args:
+            container (Union[List[Any], Dict[str, List[Any]]]): The container to modify.
+            key (str, optional): The key for a dictionary. Required if `container` is a dictionary.
+            value (Union[Any, Iterable[Any]]): The value(s) to merge into the container.
+
+        Returns:
+            None: Modifies the container in place.
+        """
+
+        def add_unique(
+            target_list: List[Any], items: Union[Any, Iterable[Any]]
+        ) -> None:
+            """Helper function to add unique items to a list."""
+            if isinstance(items, (list, tuple, set)):
+                for item in items:
+                    if item not in target_list:
+                        target_list.append(item)
+            else:
+                if items not in target_list:
+                    target_list.append(items)
+
+        if isinstance(container, dict):
+            if key is None:
+                raise ValueError("Key must be provided for dictionary containers.")
+            if key not in container:
+                container[key] = []
+            add_unique(container[key], value)
+        elif isinstance(container, list):
+            add_unique(container, value)
+        else:
+            raise TypeError("Container must be either a list or a dictionary.")
+
+    def add_to_list(self, existing_list: list, new_items: list):
+        """
+        Adds items to a list, ensures no duplicates, and returns the updated list.
+
+        Args:
+            existing_list (list): The original list to which items will be added.
+            new_items (list or any): Items to add. Can be a list or a single item.
+
+        Returns:
+            list: The updated list with new items added, without duplicates.
+        """
+        if not isinstance(new_items, list):
+            new_items = [new_items]
+
+        for item in new_items:
+            if item not in existing_list:
+                existing_list.append(item)
+        return existing_list
+
+    def filter_list(self, base_list: list, items_to_remove: list):
+        """
+        Removes items from the base list if they are found in the items_to_remove list.
+
+        Args:
+            base_list (list): The list of strings to filter.
+            items_to_remove (list): The list of strings to be removed.
+
+        Returns:
+            list: A filtered list with specified items removed.
+        """
+        return [item for item in base_list if item not in items_to_remove]
 
     def get_command_prefix_from_message(self, ctx: commands.Context):
         if not ctx:
@@ -527,7 +604,10 @@ class Bot:
                 # this is handled on a per-user + per channel basis
                 # works like a queue system
                 response: Synced = Synced(ctx)
+
                 # handle global middlewares
+                all_middlewares_found: dict = {}
+
                 if (
                     "middlewares" in command_list[commandName]
                     and command_list[commandName]["middlewares"]
@@ -536,8 +616,16 @@ class Bot:
                         command_list[commandName]["middlewares"]
                     )
 
-                    before = global_middlewares["before"]
-                    after = global_middlewares["after"]
+                    # keep track of the middlewares
+                    self.array_merge(
+                        all_middlewares_found, "before", global_middlewares["before"]
+                    )
+                    self.array_merge(
+                        all_middlewares_found, "after", global_middlewares["after"]
+                    )
+
+                    before: list = global_middlewares["before"]
+                    after: list = global_middlewares["after"]
 
                     middleware_status = True
                     middleware_error = None
@@ -604,7 +692,6 @@ class Bot:
 
                             if validation["status"]:
                                 inputArguments = validation["args"]
-
                                 authorization = []
                                 authorize = True
                                 middlewares = self.organize_middlewares(
@@ -628,8 +715,14 @@ class Bot:
                                     after = []
 
                                     if middlewares:
-                                        before = middlewares["before"]
-                                        after = middlewares["after"]
+                                        before = self.filter_list(
+                                            middlewares["before"],
+                                            all_middlewares_found["before"],
+                                        )
+                                        after = self.filter_list(
+                                            middlewares["after"],
+                                            all_middlewares_found["after"],
+                                        )
 
                                         if before:
                                             (

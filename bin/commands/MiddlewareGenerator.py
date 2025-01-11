@@ -50,11 +50,11 @@ class {class_name}:
                 makedirs(middleware_dir)
 
             middleware_file_path = path.join(middleware_dir, f"{middleware_name}.py")
-            
+
             if path.exists(middleware_file_path):
                 print(f"Error: {middleware_file_path} already exists.")
                 return
-                
+
             with open(middleware_file_path, "w") as middleware_file:
                 middleware_file.write(middleware_template)
 
