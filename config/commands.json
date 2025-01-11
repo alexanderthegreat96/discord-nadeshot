@@ -4,7 +4,9 @@
       "syntax": "!second",
       "description": "Awaiting developer description",
       "filePath": "Second.py",
-      "authorization": [],
+      "authorization": [
+        "admin"
+      ],
       "hasValue": false,
       "slashCommand": false,
       "middlewares": [

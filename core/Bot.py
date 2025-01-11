@@ -367,13 +367,11 @@ class Bot:
         if "arguments" in inputs and len(inputs["arguments"]):
             for item in inputs["arguments"]:
                 self.validate_command_inputs(item)
-        else:
-            pass
 
-    def organize_middlewares(self, middlewares=[]):
+    def organize_middlewares(self, middlewares: list = []) -> list:
         if middlewares:
-            before_middlewares = []
-            after_middlewares = []
+            before_middlewares: list = []
+            after_middlewares: list = []
             for middleware in middlewares:
                 if middleware.startswith("before_"):
                     before_middlewares.append(middleware)
@@ -390,10 +388,8 @@ class Bot:
 
         if middlewares:
             for middleware in middlewares:
-                if path.exists(from_root("middlewares/" + middleware + ".py")):
-                    commandContents = self.path_import(
-                        "middlewares/" + middleware + ".py"
-                    )
+                if path.exists(from_root(f"middlewares/{middleware}.py")):
+                    commandContents = self.path_import(f"middlewares/{middleware}.py")
                     className = getattr(commandContents, self.to_camel_case(middleware))
                     run = className(ctx, command_data)
                     output = run.main()
@@ -411,37 +407,16 @@ class Bot:
 
         return status, error, message
 
-    def is_banned(self, ctx):
-        userInfo = DiscordUser(ctx)
-        status = False
-
-        if path.exists(from_root("authorization/banned.py")):
-            commandContents = self.path_import("authorization/banned.py")
-            className = getattr(commandContents, "banned")
-            run = className(ctx, userInfo.user_id)
-            output = run.main()
-            return output
-
-    def authorize(self, ctx, groups=[]):
+    def authorize(self, ctx: commands.Context, groups: list = []) -> bool:
         if groups:
-            staff_listGroups = self.staff_groups()
             userInfo = DiscordUser(ctx)
-            status = False
             for group in groups:
-                if group in staff_listGroups:
-                    if path.exists(from_root("authorization/" + group + ".py")):
-                        commandContents = self.path_import(
-                            "authorization/" + group + ".py"
-                        )
-                        className = getattr(commandContents, group)
-                        run = className(ctx, userInfo.user_id)
-                        output = run.main()
-                        if output == True:
-                            return True
-
-        else:
-            status = True
-        return status
+                if path.exists(from_root(f"authorization/{group}.py")):
+                    commandContents = self.path_import(f"authorization/{group}.py")
+                    className = getattr(commandContents, self.to_camel_case(group))
+                    run = className(ctx, userInfo.user_id)
+                    return run.main()
+        return True
 
     def __skip_strings(self, skip_strings: list = None, user_input: str = ""):
         for item in skip_strings:

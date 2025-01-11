@@ -1,24 +1,12 @@
-import json
+from discord.ext import commands
 
 
-class admin:
-    def __init__(self, ctx, user_id=0):
-        self.ctx = ctx
-        self.user_id = user_id
+class Admin:
+    def __init__(self, ctx: commands.Context, user_id: int = 0):
+        self.ctx: commands.Context = ctx
+        self.user_id: int = user_id
 
-    def staffList(self):
-        try:
-            f = open("config/staff.json", "r")
-            try:
-                data = json.load(f)
-                return data["users"]
-            except Exception as e:
-                return False
-        except Exception as e:
-            return False
-
-    def main(self):
-        staffList = self.staffList()
-        if str(self.user_id) in staffList["admin"]:
-            return True
+    def main(self) -> bool:
+        # use whatever logic you see fit
+        # you may use some model to retrieve user data as well
         return False
