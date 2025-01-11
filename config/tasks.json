@@ -23,6 +23,22 @@
       "minutes": 0,
       "seconds": 0,
       "enabled": true
+    },
+    "TestTask": {
+      "file_name": "test_task.py",
+      "class_name": "TestTask",
+      "hours": 1,
+      "minutes": 0,
+      "seconds": 0,
+      "enabled": true
+    },
+    "TestNothing": {
+      "file_name": "test_nothing.py",
+      "class_name": "TestNothing",
+      "hours": 1,
+      "minutes": 0,
+      "seconds": 0,
+      "enabled": true
     }
   }
 }

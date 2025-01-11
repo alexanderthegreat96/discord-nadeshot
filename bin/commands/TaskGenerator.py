@@ -34,10 +34,13 @@ class TaskGeneratorCommand:
     def make_task_class_template(self, task_name: str) -> str:
         """Generate a Python class template for a task."""
         class_name = self.reformat_text(task_name)
-        template = f"""class {class_name}:\n\
-    def __init__(self, bot, logger):\n\
-        self.bot = bot\n\
-        self.logger = logger\n\n\
+        template = f"""from discord.ext import commands
+from core.Logger import Logger
+
+class {class_name}:\n\
+    def __init__(self, bot : commands.Bot, logger : Logger):\n\
+        self.bot : commands.Bot = bot\n\
+        self.logger : Logger = logger\n\n\
     async def main(self):\n\
         self.logger.info("Task: {class_name} has started...")
 """
