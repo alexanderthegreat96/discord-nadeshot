@@ -6,13 +6,20 @@ import json
 import sys
 import time
 import re
+import traceback
+import types
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from os import path
-from typing import Callable, Coroutine
-import traceback
-import types
-from typing import Any, Dict, List, Union, Iterable
+from typing import (
+    Callable,
+    Coroutine,
+    Any,
+    Dict,
+    List,
+    Union,
+    Iterable,
+)
 
 # Third-party library imports
 import discord
@@ -31,15 +38,25 @@ from utils.error_handler import ErrorHandler
 from utils.synced import Synced
 
 
+# This code has been cleaned up
+# refactoed
+# and improve by GPT 4o
 class Bot:
-    def __init__(
-        self,
-    ):
+    """
+    Main Discord bot framework class, managing commands, tasks, events,
+    and dynamic command loading.
+    """
+
+    def __init__(self) -> None:
+        """
+        Initialize the Bot with environment variables, config, tokens,
+        prefix settings, command references, tasks, caching, etc.
+        """
         self.env = EnvParser(from_root(".env"))
-        self.config = self.bot_config()
+        self.config = self._bot_config()
         self.bot_token = self.env.get("BOT_TOKEN", default="Hahahaha")
         self.bot_name = self.env.get("BOT_NAME", default=self.config["bot-name"])
-        self.command_prefixes: list = ["!", ".", "?", "/", ">"]
+        self.command_prefixes: List[str] = ["!", ".", "?", "/", ">"]
 
         self.bot: commands.Bot = commands.Bot(
             command_prefix=self.command_prefixes,
@@ -51,21 +68,99 @@ class Bot:
             intents=discord.Intents.all(),
             case_insensitive=True,
         )
-        self.commands = commands  # holds the commands
-        self.tasks: dict = {}  # holds the tasks
-        self.cache: Cache = Cache()  # redis connectivity for dealing with caching
+        # Holds the commands reference from discord.ext
+        self.commands = commands
+
+        # Holds references to scheduled tasks
+        self.tasks: Dict[str, tasks.Loop] = {}
+
+        # Redis connectivity for dealing with caching
+        self.cache: Cache = Cache()
+
+        # Manages multi-bot logic
         self.multi_bot_handler: MultiBotHandler = MultiBotHandler()
 
+        # Standard issue logger
         self.logging: Logger = Logger(
             self.env.get("BOT_NAME", default="Nadeshot")
-        ).get_logger()  # standard issue logger
+        ).get_logger()
 
-        self.executor: ThreadPoolExecutor = ThreadPoolExecutor()  # handles execution of taks in parallel to prevent main process performance issues
+        # Executor to handle parallel tasks,
+        # preventing main event loop performance issues
+        self.executor: ThreadPoolExecutor = ThreadPoolExecutor()
 
-        # response queues handler
+        # Response queues handler for channel concurrency control
         self.channel_queues: defaultdict[
             int, asyncio.Queue[Callable[[], Coroutine[None, None, None]]]
         ] = defaultdict(asyncio.Queue)
+
+    # --------------------------------------------------------------------------
+    # Data / Config Loading
+    # --------------------------------------------------------------------------
+
+    def _bot_config(self) -> Dict[str, Any]:
+        """
+        Loads the bot configuration from config/bot.json.
+
+        Returns:
+            dict: The bot configuration dictionary.
+        """
+        try:
+            with open(from_root("config/bot.json"), "r") as f:
+                data = json.load(f)
+            return data["config"]
+        except Exception as e:
+            self.logging.error(f"Error loading bot config: {e}")
+            return {}
+
+    def _command_list(self) -> Dict[str, Any]:
+        """
+        Loads the command list from config/commands.json.
+
+        Returns:
+            dict: The commands configuration dictionary.
+        """
+        try:
+            with open(from_root("config/commands.json"), "r") as f:
+                data = json.load(f)
+            return data["commands"]
+        except Exception as e:
+            self.logging.error(f"Unable to load config/commands.json. Error: {e}")
+            return {}
+
+    def _task_list(self) -> Union[Dict[str, Any], None]:
+        """
+        Loads the scheduled tasks from config/tasks.json.
+
+        Returns:
+            dict or None: The tasks configuration dictionary or None if missing.
+        """
+        try:
+            with open(from_root("config/tasks.json"), "r") as f:
+                data = json.load(f)
+            return data["tasks"] if "tasks" in data else None
+        except Exception as e:
+            self.logging.error(f"Unable to load config/tasks.json. Error: {e}")
+            return None
+
+    def staff_groups(self) -> Union[Dict[str, Any], None]:
+        """
+        Loads the staff groups from config/groups.json.
+
+        Returns:
+            dict or None: The groups configuration dictionary or None if missing.
+        """
+        try:
+            with open(from_root("config/groups.json"), "r") as f:
+                data = json.load(f)
+            return data["groups"]
+        except Exception as e:
+            self.logging.error(f"Unable to load config/groups.json. Error: {e}")
+            return None
+
+    # --------------------------------------------------------------------------
+    # General Utility Methods
+    # --------------------------------------------------------------------------
 
     def array_merge(
         self,
@@ -80,12 +175,16 @@ class Bot:
         Ensures no duplicate values within the target list.
 
         Args:
-            container (Union[List[Any], Dict[str, List[Any]]]): The container to modify.
-            key (str, optional): The key for a dictionary. Required if `container` is a dictionary.
-            value (Union[Any, Iterable[Any]]): The value(s) to merge into the container.
+            container (Union[List[Any], Dict[str, List[Any]]]):
+                The container to modify.
+            key (str, optional):
+                The key for a dictionary. Required if `container` is a dictionary.
+            value (Union[Any, Iterable[Any]]):
+                The value(s) to merge into the container.
 
-        Returns:
-            None: Modifies the container in place.
+        Raises:
+            ValueError: If `key` is not provided for dictionary containers.
+            TypeError: If container is neither a list nor a dictionary.
         """
 
         def add_unique(
@@ -111,7 +210,9 @@ class Bot:
         else:
             raise TypeError("Container must be either a list or a dictionary.")
 
-    def add_to_list(self, existing_list: list, new_items: list):
+    def add_to_list(
+        self, existing_list: List[Any], new_items: Union[List[Any], Any]
+    ) -> List[Any]:
         """
         Adds items to a list, ensures no duplicates, and returns the updated list.
 
@@ -130,123 +231,126 @@ class Bot:
                 existing_list.append(item)
         return existing_list
 
-    def filter_list(self, base_list: list, items_to_remove: list):
+    def filter_list(
+        self, base_list: List[Any], items_to_remove: List[Any]
+    ) -> List[Any]:
         """
         Removes items from the base list if they are found in the items_to_remove list.
 
         Args:
-            base_list (list): The list of strings to filter.
-            items_to_remove (list): The list of strings to be removed.
+            base_list (list): The list of items to filter.
+            items_to_remove (list): The list of items to be removed.
 
         Returns:
             list: A filtered list with specified items removed.
         """
         return [item for item in base_list if item not in items_to_remove]
 
-    def get_command_prefix_from_message(self, ctx: commands.Context):
-        if not ctx:
+    def get_command_prefix_from_message(self, ctx: commands.Context) -> str:
+        """
+        Attempts to extract the command prefix (first character) from
+        the context's message content. Falls back to '/' if no message
+        is found.
+
+        Args:
+            ctx (commands.Context): The command invocation context.
+
+        Returns:
+            str: The prefix character or '/'.
+        """
+        if not ctx or not ctx.message:
             return "/"
 
-        message: str = ctx.message.content
-        if message:
-            return message[0]
-
-        return "/"
+        message_content: str = ctx.message.content
+        return message_content[0] if message_content else "/"
 
     def to_camel_case(self, input_string: str) -> str:
-        # Split the string using dashes, underscores, or dots as delimiters
+        """
+        Converts a string with dashes, underscores, or dots into CamelCase.
+
+        Args:
+            input_string (str): The string to convert.
+
+        Returns:
+            str: The CamelCase version of the input string.
+        """
         parts = re.split(r"[-_.]", input_string)
-        # Capitalize each part and join them together
         return "".join(part.capitalize() for part in parts)
 
-    # processing commands from multple users in the same channel
-    # this prevents responses / events from overlapping
+    async def reply_with(self, ctx: commands.Context, content: any):
+        """
+        Sends a reply to the current context channel based on the type of content provided.
+
+        :param content: The content to send. It can be:
+                        - discord.Embed: to send an embed message.
+                        - str: to send a plain text message.
+                        - any other type: to send a default fallback message.
+        """
+        if isinstance(content, discord.Embed):
+            await ctx.channel.send(embed=content)
+        elif isinstance(content, str):
+            await ctx.channel.send(content)
+        else:
+            await ctx.channel.send("No valid content provided.")
+
     async def process_queue(
         self, channel_id: int, task: Callable[[], Coroutine[None, None, None]]
     ) -> None:
         """
-        Adds a task to the queue for the specified channel and processes the queue.
+        Adds a coroutine task to the queue for the specified channel
+        and processes that queue in a FIFO manner, ensuring only one
+        task is running at a time per channel.
 
         Args:
             channel_id (int): The ID of the channel.
-            task (Callable[[], Coroutine[None, None, None]]): The task (coroutine function) to run.
+            task (Callable[[], Coroutine[None, None, None]]):
+                The async coroutine function to run.
         """
-        # Get the queue for the specific channel
         queue = self.channel_queues[channel_id]
-
-        # Put the task in the queue
         await queue.put(task)
 
-        # Ensure only one task is running at a time for each channel
         while not queue.empty():
-            # Get the next task in the queue
             next_task = await queue.get()
-
-            # Run the task (which is the coroutine function) and wait for it to finish
             await next_task()
-
-            # Mark the task as done
             queue.task_done()
 
-    def bot_config(self):
-        try:
-            f = open(from_root("config/bot.json"), "r")
-            data = json.load(f)
-            return data["config"]
-        except Exception as e:
-            self.logging.error(e)
-            return None
-
-    def staff_groups(self):
-        try:
-            f = open(from_root("config/groups.json"), "r")
-            data = json.load(f)
-            return data["groups"]
-        except Exception as e:
-            self.logging.error(f"Unable to load config/groups.json. Error: {e}")
-            return None
-
-    def str_to_class(self, field: str):
-        try:
-            identifier = getattr(sys.modules[field], field)
-        except AttributeError:
-            raise NameError("%s doesn't exist." % field)
-        if isinstance(identifier, (types.ClassType, types.TypeType)):
-            return identifier
-        raise TypeError("%s is not a class." % field)
-
-    def command_list(self) -> dict:
-        try:
-            f = open(from_root("config/commands.json"), "r")
-            data = json.load(f)
-            return data["commands"]
-        except Exception as e:
-            self.logging.error(f"Unable to load config/commands.json. Error: {e}")
-            return None
-
     def should_ignore_commands_from_variants(self, server_id: int) -> bool:
-        # will use redis caching to store bot status within a server
-        # if a server has more than 1 variants
-        # the rest should skip the commands
-        config = self.bot_config()
+        """
+        Determines if commands should be ignored on a server due to
+        multiple bot variants.
 
-        if config["enable-multiple-bots"]:
+        Args:
+            server_id (int): The guild's ID.
+
+        Returns:
+            bool: True if commands should be ignored, False otherwise.
+        """
+        if self.config.get("enable-multiple-bots"):
             return self.multi_bot_handler.should_ignore_commands(server_id)
-
         return False
 
-    def task_list(self):
-        try:
-            f = open(from_root("config/tasks.json"), "r")
-            data = json.load(f)
-            return data["tasks"] if "tasks" in data else None
-        except Exception as e:
-            self.logging.error(f"Unable to load config/tasks.json. Error: {e}")
-            return None
+    def check_if_item_is_not_empty(self, item: Any) -> bool:
+        """
+        Checks if an item is not None or an empty string.
+
+        Args:
+            item (Any): The item to check.
+
+        Returns:
+            bool: True if item is not empty, False otherwise.
+        """
+        if item is not None and item != "":
+            return True
+        return False
+
+    # --------------------------------------------------------------------------
+    # Task Scheduling & Management
+    # --------------------------------------------------------------------------
 
     def get_task_schedule_message(self, hours: int, minutes: int, seconds: int) -> str:
         """
-        Generates a human-readable message about the task schedule based on hours, minutes, and seconds.
+        Generates a human-readable message about the task schedule
+        based on hours, minutes, and seconds.
 
         Args:
             hours (int): Number of hours between each task run.
@@ -266,767 +370,623 @@ class Bot:
             return f"The task will run every {minutes} minute{'s' if minutes != 1 else ''}."
 
         if minutes == 0 and seconds == 0:
-            return f"The task will run hourly."
+            return "The task will run hourly."
 
         if hours == 0:
-            return f"The task will run every {minutes} minute{'s' if minutes != 1 else ''} and {seconds} second{'s' if seconds != 1 else ''}."
+            return (
+                f"The task will run every {minutes} minute{'s' if minutes != 1 else ''} "
+                f"and {seconds} second{'s' if seconds != 1 else ''}."
+            )
 
         if minutes == 0:
-            return f"The task will run every {hours} hour{'s' if hours != 1 else ''} and {seconds} second{'s' if seconds != 1 else ''}."
+            return (
+                f"The task will run every {hours} hour{'s' if hours != 1 else ''} "
+                f"and {seconds} second{'s' if seconds != 1 else ''}."
+            )
 
         if seconds == 0:
-            return f"The task will run every {hours} hour{'s' if hours != 1 else ''} and {minutes} minute{'s' if minutes != 1 else ''}."
+            return (
+                f"The task will run every {hours} hour{'s' if hours != 1 else ''} "
+                f"and {minutes} minute{'s' if minutes != 1 else ''}."
+            )
 
-        return f"The task will run every {hours} hour{'s' if hours != 1 else ''}, {minutes} minute{'s' if minutes != 1 else ''}, and {seconds} second{'s' if seconds != 1 else ''}."
+        return (
+            f"The task will run every {hours} hour{'s' if hours != 1 else ''}, "
+            f"{minutes} minute{'s' if minutes != 1 else ''}, and "
+            f"{seconds} second{'s' if seconds != 1 else ''}."
+        )
 
-    def add_tasks(self, taskname: str) -> None:
-        tasklist = self.task_list()
-        if tasklist and taskname in tasklist:
-            task_info = tasklist[taskname]
+    def add_tasks(self, task_name: str) -> None:
+        """
+        Adds a scheduled task by name if it exists in the task configuration.
 
-            if "file_name" in task_info and "class_name" in task_info:
-                file_name = task_info["file_name"]
-                class_name = task_info["class_name"]
+        Args:
+            task_name (str): The name of the task to schedule.
+        """
+        task_list = self._task_list()
+        if not task_list or task_name not in task_list:
+            self.logging.error(f"Task {task_name} not found in task list.")
+            return
 
-                seconds = task_info.get("seconds", 0)
-                minutes = task_info.get("minutes", 0)
-                hours = task_info.get("hours", 0)
-                enabled = task_info.get("enabled", True)
+        task_info = task_list[task_name]
+        file_name = task_info.get("file_name")
+        class_name = task_info.get("class_name")
+        seconds = task_info.get("seconds", 0)
+        minutes = task_info.get("minutes", 0)
+        hours = task_info.get("hours", 0)
+        enabled = task_info.get("enabled", True)
 
-                if path.exists(from_root(f"tasks/{file_name}")):
-                    if enabled:
-                        try:
-                            self.logging.success(
-                                f"Hooked Task: {taskname}. {self.get_task_schedule_message(hours, minutes, seconds)}"
-                            )
+        if not file_name or not class_name:
+            self.logging.error(
+                f"Task {task_name} error: Missing mandatory 'file_name' or 'class_name'."
+            )
+            return
 
-                            command_contents = self.path_import(f"tasks/{file_name}")
-                            TaskClass = getattr(command_contents, class_name)
-                            task_instance = TaskClass(
-                                self.bot,
-                                self.logging,
-                            )
+        full_path = from_root(f"tasks/{file_name}")
+        if not path.exists(full_path):
+            self.logging.error(f"Task file {file_name} not found at: {full_path}")
+            return
 
-                            async def task_main():
-                                await task_instance.main()
+        if enabled:
+            try:
+                self.logging.success(
+                    f"Hooked Task: {task_name}. "
+                    f"{self.get_task_schedule_message(hours, minutes, seconds)}"
+                )
 
-                            def run_in_thread():
-                                asyncio.run(task_main())
+                command_contents = self.path_import(f"tasks/{file_name}")
+                TaskClass = getattr(command_contents, class_name)
+                task_instance = TaskClass(self.bot, self.logging)
 
-                            @tasks.loop(hours=hours, minutes=minutes, seconds=seconds)
-                            async def task_loop():
-                                await asyncio.get_event_loop().run_in_executor(
-                                    self.executor, run_in_thread
-                                )
+                async def task_main():
+                    await task_instance.main()
 
-                            @self.bot.listen()
-                            async def on_ready():
-                                if not task_loop.is_running():
-                                    task_loop.start()
+                def run_in_thread():
+                    asyncio.run(task_main())
 
-                            self.tasks[taskname] = task_loop
-                        except Exception as e:
-                            self.logging.error(f"Task {taskname} error: {e}")
-                    else:
-                        self.logging.warning(
-                            f"Skipped Task: {taskname} as it is disabled."
-                        )
-                else:
-                    self.logging.error(
-                        f"Task {taskname} error: Missing one of the mandatory keys: file_name, class_name."
+                @tasks.loop(hours=hours, minutes=minutes, seconds=seconds)
+                async def task_loop():
+                    await asyncio.get_event_loop().run_in_executor(
+                        self.executor, run_in_thread
                     )
-            else:
-                self.logging.error(f"Task {file_name} not found in tasks/task.json")
-        else:
-            self.logging.error(f"Task {taskname} not found in task list.")
 
-    def shutdown_executor(self):
-        """Shutdown the executor cleanly when the bot is stopping."""
+                @self.bot.listen()
+                async def on_ready():
+                    if not task_loop.is_running():
+                        task_loop.start()
+
+                self.tasks[task_name] = task_loop
+
+            except Exception as e:
+                self.logging.error(f"Task {task_name} error: {e}")
+        else:
+            self.logging.warning(f"Skipped Task: {task_name} as it is disabled.")
+
+    def shutdown_executor(self) -> None:
+        """
+        Shuts down the thread pool executor cleanly when the bot is stopping.
+        """
         self.executor.shutdown(wait=False)
 
-    # imports given modules / python files allowing
-    # dependency injection
+    # --------------------------------------------------------------------------
+    # Dynamic Imports
+    # --------------------------------------------------------------------------
 
-    def path_import(self, absolute_path):
+    def path_import(self, absolute_path: str):
+        """
+        Dynamically imports a Python file by its path.
+
+        Args:
+            absolute_path (str): Relative path to the file to import.
+
+        Returns:
+            module: The imported Python module object.
+        """
         spec = importlib.util.spec_from_file_location(
             absolute_path, from_root(absolute_path)
         )
         module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
+        spec.loader.exec_module(module)  # type: ignore
         return module
 
-    def check_if_item_is_not_empty(self, item):
-        if item is not None:
-            return True
-        elif item != "":
-            return True
-        else:
-            return False
+    def str_to_class(self, field: str):
+        """
+        Dynamically retrieves a class from the sys.modules.
 
-    def validate_command_inputs(self, inputs):
-        if "arguments" in inputs and len(inputs["arguments"]):
-            for item in inputs["arguments"]:
-                self.validate_command_inputs(item)
+        Args:
+            field (str): The class name as a string.
 
-    def organize_middlewares(self, middlewares: list = []) -> list:
-        if middlewares:
-            before_middlewares: list = []
-            after_middlewares: list = []
-            for middleware in middlewares:
-                if middleware.startswith("before_"):
-                    before_middlewares.append(middleware)
-                elif middleware.startswith("after_"):
-                    after_middlewares.append(middleware)
+        Raises:
+            NameError: If the class doesn't exist.
+            TypeError: If the item is not a class.
 
-            return {"before": before_middlewares, "after": after_middlewares}
-        return []
+        Returns:
+            type: The retrieved class.
+        """
+        try:
+            identifier = getattr(sys.modules[field], field)
+        except AttributeError:
+            raise NameError(f"{field} doesn't exist.")
 
-    def run_middleware(self, ctx, middlewares=[], command_data=None):
+        if isinstance(identifier, (types.ClassType, type)):
+            return identifier
+        raise TypeError(f"{field} is not a class.")
+
+    # --------------------------------------------------------------------------
+    # Middleware & Authorization
+    # --------------------------------------------------------------------------
+
+    def organize_middlewares(
+        self, middlewares: List[str] = None
+    ) -> Dict[str, List[str]]:
+        """
+        Splits an incoming list of middleware strings into 'before' and 'after'
+        categories based on the prefix name: 'before_*' or 'after_*'.
+
+        Args:
+            middlewares (list, optional): List of middleware string names.
+
+        Returns:
+            dict: Dictionary with keys 'before' and 'after'.
+        """
+        if not middlewares:
+            return {"before": [], "after": []}
+
+        before_middlewares: List[str] = []
+        after_middlewares: List[str] = []
+        for middleware in middlewares:
+            if middleware.startswith("before_"):
+                before_middlewares.append(middleware)
+            elif middleware.startswith("after_"):
+                after_middlewares.append(middleware)
+
+        return {"before": before_middlewares, "after": after_middlewares}
+
+    def run_middleware(
+        self,
+        ctx: commands.Context,
+        middlewares: List[str] = None,
+        command_data: Dict[str, Any] = None,
+    ) -> (bool, Union[str, None], Union[str, None]):
+        """
+        Executes the specified list of middleware classes in order.
+
+        Args:
+            ctx (commands.Context): The command invocation context.
+            middlewares (list, optional): List of middleware names to be run.
+            command_data (dict, optional): Data relevant to the command
+                (arguments, authorization, etc.).
+
+        Returns:
+            tuple: (status, error, message)
+                - status (bool): Overall success/failure of all middlewares.
+                - error (str or None): If failure occurred, the error message.
+                - message (str or None): A success or user feedback message.
+        """
         status = True
         error = None
         message = None
 
-        if middlewares:
-            for middleware in middlewares:
-                if path.exists(from_root(f"middlewares/{middleware}.py")):
-                    commandContents = self.path_import(f"middlewares/{middleware}.py")
-                    className = getattr(commandContents, self.to_camel_case(middleware))
-                    run = className(ctx, command_data)
-                    output = run.main()
+        if not middlewares:
+            return status, error, message
 
-                    if "status" in output:
-                        if not output["status"]:
-                            status = False
-                            error = output["error"]
-                            return status, error, message
+        for middleware in middlewares:
+            file_path = from_root(f"middlewares/{middleware}.py")
+            if path.exists(file_path):
+                command_contents = self.path_import(f"middlewares/{middleware}.py")
+                class_obj = getattr(command_contents, self.to_camel_case(middleware))
+                run = class_obj(ctx, command_data)
+                output = run.main()
 
-                        else:
-                            status = True
-                            if "message" in output:
-                                message = output["message"]
+                if "status" in output and not output["status"]:
+                    return False, output["error"], message
+
+                if "message" in output:
+                    message = output["message"]
 
         return status, error, message
 
-    def authorize(self, ctx: commands.Context, groups: list = []) -> bool:
-        if groups:
-            userInfo = DiscordUser(ctx)
-            for group in groups:
-                if path.exists(from_root(f"authorization/{group}.py")):
-                    commandContents = self.path_import(f"authorization/{group}.py")
-                    className = getattr(commandContents, self.to_camel_case(group))
-                    run = className(ctx, userInfo.user_id)
-                    return run.main()
+    def authorize(self, ctx: commands.Context, groups: List[str] = None) -> bool:
+        """
+        Authorizes a user against a list of authorization groups.
+
+        Args:
+            ctx (commands.Context): The context of the command invocation.
+            groups (list, optional): The list of authorization groups.
+
+        Returns:
+            bool: True if authorized, False otherwise.
+        """
+        if not groups:
+            return True
+
+        user_info = DiscordUser(ctx)
+        for group in groups:
+            file_path = from_root(f"authorization/{group}.py")
+            if path.exists(file_path):
+                command_contents = self.path_import(f"authorization/{group}.py")
+                class_obj = getattr(command_contents, self.to_camel_case(group))
+                run = class_obj(ctx, user_info.user_id)
+                if not run.main():
+                    return False
         return True
 
-    def __skip_strings(self, skip_strings: list = None, user_input: str = ""):
-        for item in skip_strings:
-            if user_input.startswith(item):
-                return True
-        return False
+    # --------------------------------------------------------------------------
+    # Command Registration & Event Handlers
+    # --------------------------------------------------------------------------
 
-    def add_commands(self, commandName="dth"):
-        self.logging.success(f"Hooked Command: {commandName}")
+    def add_commands(self, command_name: str = "dth") -> None:
+        """
+        Dynamically registers a command and sets up event listeners
+        for common Discord bot events.
+
+        Args:
+            command_name (str, optional):
+                The primary command name. Defaults to "dth".
+        """
+        self.logging.success(f"Hooked Command: {command_name}")
 
         @self.bot.before_invoke
         async def reset_cooldown(ctx):
-            if self.config["enable-reset-cooldowns"]:
-                userInfo = DiscordUser(ctx)
-                immune = CooldownImmune(ctx, userInfo.user_id)
+            """
+            If a user is marked as immune from cooldown (via
+            `CooldownImmune`), reset their command cooldown timer.
+            """
+            if self.config.get("enable-reset-cooldowns"):
+                user_info = DiscordUser(ctx)
+                immune = CooldownImmune(ctx, user_info.user_id)
                 if immune.main():
                     return ctx.command.reset_cooldown(ctx)
 
         @self.bot.event
         async def on_command_error(ctx, error):
+            """
+            Global error handler for command execution.
+            """
             if isinstance(error, commands.CommandOnCooldown):
                 seconds = error.retry_after
                 await ctx.send(
-                    f"Your ability is on cooldown, retry in: <t:{int(time.time() + seconds)}:R>",
+                    f"Your ability is on cooldown, retry in: "
+                    f"<t:{int(time.time() + seconds)}:R>",
                     delete_after=seconds,
                 )
             elif isinstance(error, commands.MissingRequiredArgument):
                 await ctx.send(
-                    "```No command arguments provided! \nCheck the command helper for the list of commands.```"
+                    "```No command arguments provided!\n"
+                    "Check the command helper for the list of commands.```"
                 )
             elif isinstance(error, commands.MissingPermissions):
                 await ctx.send(
-                    "```You do not have permissions to execute this command or this channel does not allow it.```"
+                    "```You do not have permissions to execute this command or "
+                    "this channel does not allow it.```"
                 )
             elif isinstance(error, commands.CommandNotFound):
-                # await ctx.send("```Unknown command. Run: [/dth help] for a full list of commands.```")
-                pass
+                # Optional to respond to unknown commands
+                return
             else:
-                error_traceback = "".join(
+                error_trace = "".join(
                     traceback.format_exception(type(error), error, error.__traceback__)
                 )
-                error_handler = ErrorHandler(
-                    ctx.message.content, str(error), error_traceback, self.logging
+                err_handler = ErrorHandler(
+                    ctx.message.content, str(error), error_trace, self.logging
                 )
-                await error_handler.main()
+                await err_handler.main()
                 await ctx.send(
-                    f"```{self.config['bot-name']} ran into a problem. Try again and if the issue persists, contact the developer.```"
+                    f"```{self.config['bot-name']} ran into a problem. "
+                    "Try again and if the issue persists, contact the developer.```"
                 )
 
         @self.bot.event
         async def on_guild_join(guild):
-            if path.exists(from_root("events/on_guild_join.py")):
+            """Event for joining a new guild."""
+            file_path = from_root("events/on_guild_join.py")
+            if path.exists(file_path):
                 event_contents = self.path_import("events/on_guild_join.py")
-                class_name = getattr(event_contents, "OnGuildJoin")
-                run = class_name(guild, self.bot)
+                class_obj = getattr(event_contents, "OnGuildJoin")
+                run = class_obj(guild, self.bot)
                 await run.main()
 
         @self.bot.event
         async def on_member_join(member):
-            if path.exists(from_root("events/on_member_join.py")):
+            """Event for new member join."""
+            file_path = from_root("events/on_member_join.py")
+            if path.exists(file_path):
                 event_contents = self.path_import("events/on_member_join.py")
-                class_name = getattr(event_contents, "OnMemberJoin")
-                run = class_name(member, self.bot)
+                class_obj = getattr(event_contents, "OnMemberJoin")
+                run = class_obj(member, self.bot)
                 await run.main()
 
         @self.bot.event
         async def on_member_remove(member):
-            if path.exists(from_root("events/on_member_remove.py")):
+            """Event for member removal."""
+            file_path = from_root("events/on_member_remove.py")
+            if path.exists(file_path):
                 event_contents = self.path_import("events/on_member_remove.py")
-                class_name = getattr(event_contents, "OnMemberRemove")
-                run = class_name(member, self.bot)
+                class_obj = getattr(event_contents, "OnMemberRemove")
+                run = class_obj(member, self.bot)
                 await run.main()
 
         @self.bot.event
         async def on_message_edit(before, after):
+            """Event when a message is edited."""
             if after.author == self.bot.user:
                 return
-            if path.exists(from_root("events/on_message_edit.py")):
+            file_path = from_root("events/on_message_edit.py")
+            if path.exists(file_path):
                 event_contents = self.path_import("events/on_message_edit.py")
-                class_name = getattr(event_contents, "OnMessageEdit")
-                run = class_name(before, after, self.bot)
+                class_obj = getattr(event_contents, "OnMessageEdit")
+                run = class_obj(before, after, self.bot)
                 await run.main()
 
         @self.bot.event
         async def on_message_delete(message):
+            """Event when a message is deleted."""
             if message.author == self.bot.user:
                 return
-
-            if path.exists(from_root("events/on_message_delete.py")):
+            file_path = from_root("events/on_message_delete.py")
+            if path.exists(file_path):
                 event_contents = self.path_import("events/on_message_delete.py")
-                class_name = getattr(event_contents, "OnMessageDelete")
-                run = class_name(message, self.bot)
+                class_obj = getattr(event_contents, "OnMessageDelete")
+                run = class_obj(message, self.bot)
                 await run.main()
 
         @self.bot.event
         async def on_member_ban(guild, member):
+            """Event when a member is banned."""
             ban_entry = await guild.fetch_ban(member)
             ban_reason = ban_entry.reason
-
-            if path.exists(from_root("events/on_member_ban.py")):
+            file_path = from_root("events/on_member_ban.py")
+            if path.exists(file_path):
                 event_contents = self.path_import("events/on_member_ban.py")
-                class_name = getattr(event_contents, "OnMemberBan")
-                run = class_name(guild, member, ban_reason, self.bot)
+                class_obj = getattr(event_contents, "OnMemberBan")
+                run = class_obj(guild, member, ban_reason, self.bot)
                 await run.main()
 
         @self.bot.event
         async def on_member_unban(guild, member):
-            if path.exists(from_root("events/on_member_unban.py")):
+            """Event when a member is unbanned."""
+            file_path = from_root("events/on_member_unban.py")
+            if path.exists(file_path):
                 event_contents = self.path_import("events/on_member_unban.py")
-                class_name = getattr(event_contents, "OnMemberUnban")
-                run = class_name(guild, member, self.bot)
+                class_obj = getattr(event_contents, "OnMemberUnban")
+                run = class_obj(guild, member, self.bot)
                 await run.main()
 
         @self.bot.event
         async def on_message(message):
-            # skip self messages
-            if message.author == self.bot.user:
-                return
+            """Event for every new message."""
+            if message.author == self.bot.user or message.author.bot:
+                return  # Skip bot messages
 
-            # skip bot messages
-            if message.author.bot:
-                return
-
-            # skip commands in normal messages
-            if not any(
-                message.content.startswith(prefix) for prefix in self.command_prefixes
+            # If a different variant of the bot is present, ignore the message
+            if message.guild and self.should_ignore_commands_from_variants(
+                message.guild.id
             ):
-                # if a different variant of the bot exists in the server
-                # return null
-                # just ignore dms
-                if message.guild and message.guild.id != 0:
-                    if self.should_ignore_commands_from_variants(message.guild.id):
-                        return
+                return
 
-                if message.guild and path.exists(from_root("events/on_message.py")):
+            # If message doesn't start with any known prefix, we treat
+            # it as a normal message event
+            if not any(message.content.startswith(p) for p in self.command_prefixes):
+                file_path = from_root("events/on_message.py")
+                if message.guild and path.exists(file_path):
                     event_contents = self.path_import("events/on_message.py")
-                    class_name = getattr(event_contents, "OnMessage")
-                    run = class_name(message, self.bot)
+                    class_obj = getattr(event_contents, "OnMessage")
+                    run = class_obj(message, self.bot)
                     await run.main()
 
             await self.bot.process_commands(message)
 
-        command_list = self.command_list()
-        if command_list and commandName in command_list:
-            if "commands" not in command_list[commandName]:
-                self.logging.info(f"{commandName} has no subcommands.")
+        # Retrieve command detail from config
+        command_list = self._command_list()
+        if command_name not in command_list:
+            self.logging.info(f"'{command_name}' not found in the commands config.")
+            return
 
-            @commands.cooldown(
-                # The above code is a Python script defining a function or command using the `@command`
-                # decorator. However, the actual implementation or purpose of the function is not provided
-                # in the code snippet.
-                1,
-                self.config["cooldown-duration"],
-                commands.BucketType.user,
+        # Register the top-level command with potential subcommands
+        @commands.cooldown(
+            1,
+            self.config.get("cooldown-duration", 5),
+            commands.BucketType.user,
+        )
+        @self.bot.command(name=command_name, pass_context=True)
+        async def item(ctx, *args):
+            """Main command entrypoint for '{command_name}'."""
+            config_middlewares = command_list[command_name].get("middlewares", [])
+            global_mw = self.organize_middlewares(config_middlewares)
+            all_mw_found = {"before": [], "after": []}
+
+            # Merge global middlewares into tracking dict
+            self.array_merge(all_mw_found, "before", global_mw["before"])
+            self.array_merge(all_mw_found, "after", global_mw["after"])
+
+            # Run BEFORE global middlewares
+            mw_status, mw_error, mw_message = self.run_middleware(
+                ctx, global_mw["before"], command_list[command_name]
             )
-            @self.bot.command(name=commandName, pass_context=True)
-            async def item(ctx, *args):
-                # handle global middlewares
-                all_middlewares_found: dict = {}
 
-                if (
-                    "middlewares" in command_list[commandName]
-                    and command_list[commandName]["middlewares"]
-                ):
-                    global_middlewares = self.organize_middlewares(
-                        command_list[commandName]["middlewares"]
-                    )
+            if not mw_status:
+                await self.reply_with(ctx, mw_error)
+                return
 
-                    # keep track of the middlewares
-                    self.array_merge(
-                        all_middlewares_found, "before", global_middlewares["before"]
-                    )
-                    self.array_merge(
-                        all_middlewares_found, "after", global_middlewares["after"]
-                    )
+            if mw_message:
+                await self.reply_with(ctx, mw_message)
 
-                    before: list = global_middlewares["before"]
-                    after: list = global_middlewares["after"]
+            # If user typed 'help' as argument
+            if "help" in args and self.config.get("enable-automatic-command-helper"):
+                if self.config["enable-automatic-command-helper"] is True:
+                    parser = CommandLineArgumentParser()
+                    helper = parser.build_command_helper()
 
-                    middleware_status = True
-                    middleware_error = None
-                    middleware_message = None
-
-                    if before:
-                        middleware_status, middleware_error, middleware_message = (
-                            self.run_middleware(ctx, before, command_list[commandName])
+                    if helper:
+                        embed = discord.Embed(
+                            title=self.config["bot-name"],
+                            description="Command line helper",
+                            color=discord.Color.blue(),
                         )
+                        embed.set_footer(text="Powered by Nadeshot BETA")
 
-                    if middleware_status:
-                        if middleware_message:
-                            await ctx.channel.send(middleware_message)
+                        for h_item in helper:
+                            name = h_item["name"]
+                            command_str = h_item["command"]
+                            desc = h_item["desc"]
+                            values = desc + "\n```" + command_str + "```"
+                            embed.add_field(name=name, value=values, inline=False)
 
-                        if (
-                            "help" in args
-                            and self.config["enable-automatic-command-helper"]
-                        ):
-                            if self.config["enable-automatic-command-helper"] == True:
-                                parser = CommandLineArgumentParser()
-                                helper = parser.build_command_helper()
-
-                                if helper:
-                                    nadeshotEmbed = discord.Embed(
-                                        title=self.config["bot-name"],
-                                        description="Command line helper",
-                                        color=discord.Color.blue(),
-                                    )
-                                    nadeshotEmbed.set_footer(
-                                        text="Powered by Nadeshot BETA"
-                                    )
-
-                                    for item in helper:
-                                        name = item["name"]
-                                        command_str = item["command"]
-                                        desc = item["desc"]
-                                        authorization = item["authorization"]
-                                        arguments = item["arguments"]
-
-                                        values = (
-                                            desc + "\n" + "```" + command_str + "```\n"
-                                        )
-                                        nadeshotEmbed.add_field(
-                                            name=name, value=values, inline=False
-                                        )
-
-                                    await ctx.channel.send(embed=nadeshotEmbed)
-                            else:
-                                await ctx.channel.send(
-                                    "```Automatic command helper is disabled due to multi-user-type permissions.\n"
-                                    f"You could use [{self.get_command_prefix_from_message(ctx)}whatever-command help]. That's where helpers are generally stored.```"
-                                )
-                        else:
-                            providedArguments = (
-                                self.get_command_prefix_from_message(ctx)
-                                + ""
-                                + commandName
-                                + " "
-                                + " ".join(args)
-                            )
-
-                            parser = CommandLineArgumentParser(providedArguments)
-                            validation = parser.parse()
-
-                            if validation["status"]:
-                                inputArguments = validation["args"]
-                                authorization = []
-                                authorize = True
-                                middlewares = self.organize_middlewares(
-                                    validation["middlewares"]
-                                )
-
-                                if len(validation["authorization"]):
-                                    authorization = validation["authorization"]
-                                    authorize = self.authorize(ctx, authorization)
-
-                                if not authorize:
-                                    await ctx.channel.send(
-                                        "```This command requires special authorization.```"
-                                    )
-                                else:
-                                    middleware_status = True
-                                    middleware_error = None
-                                    middleware_message = None
-
-                                    before = []
-                                    after = []
-
-                                    if middlewares:
-                                        before = self.filter_list(
-                                            middlewares["before"],
-                                            all_middlewares_found["before"],
-                                        )
-                                        after = self.filter_list(
-                                            middlewares["after"],
-                                            all_middlewares_found["after"],
-                                        )
-
-                                        if before:
-                                            (
-                                                middleware_status,
-                                                middleware_error,
-                                                middleware_message,
-                                            ) = self.run_middleware(
-                                                ctx, before, validation
-                                            )
-
-                                    if middleware_status:
-                                        if middleware_message:
-                                            await ctx.channel.send(middleware_message)
-                                        try:
-                                            commandContents = self.path_import(
-                                                "commands/" + validation["file"]
-                                            )
-                                            className = getattr(
-                                                commandContents, validation["name"]
-                                            )
-                                            try:
-                                                run = className(
-                                                    self.bot,
-                                                    ctx,
-                                                    args,
-                                                    authorization,
-                                                    inputArguments,
-                                                )
-                                                await run.main()
-                                            except Exception as e:
-                                                if self.config["development-mode"]:
-                                                    await ctx.channel.send(
-                                                        "```Error running class: "
-                                                        + str(e)
-                                                        + "\n"
-                                                        + str(traceback.format_exc())
-                                                        + "```"
-                                                    )
-                                                else:
-                                                    await ctx.channel.send(
-                                                        "```System Error. Contact developer```"
-                                                    )
-                                        except Exception as e:
-                                            if self.config["development-mode"]:
-                                                await ctx.channel.send(
-                                                    "```Error importing class: "
-                                                    + str(e)
-                                                    + "\n"
-                                                    + str(traceback.format_exc())
-                                                    + "```"
-                                                )
-                                            else:
-                                                await ctx.channel.send(
-                                                    "```System Error. Contact developer```"
-                                                )
-                                    else:
-                                        await ctx.channel.send(
-                                            "```Error: " + middleware_error + "```"
-                                        )
-
-                                    if after:
-                                        (
-                                            run_after_status,
-                                            run_after_error,
-                                            run_after_message,
-                                        ) = self.run_middleware(ctx, after, validation)
-                                        if not run_after_status:
-                                            await ctx.channel.send(
-                                                "```Error: " + run_after_error + "```"
-                                            )
-                                        else:
-                                            if run_after_message:
-                                                await ctx.channel.send(
-                                                    run_after_message
-                                                )
-
-                            else:
-                                nadeshotEmbed = discord.Embed(
-                                    title=self.config["bot-name"],
-                                    description="General information",
-                                    color=discord.Color.blue(),
-                                )
-                                nadeshotEmbed.set_footer(
-                                    text="Powered by Nadeshot BETA"
-                                )
-
-                                if "errors" in validation:
-                                    nadeshotEmbed.add_field(
-                                        name="Command input",
-                                        value=validation["name"],
-                                        inline=False,
-                                    )
-                                    nadeshotEmbed.add_field(
-                                        name="Description",
-                                        value=validation["description"],
-                                        inline=False,
-                                    )
-                                    nadeshotEmbed.add_field(
-                                        name="Example input",
-                                        value=validation["syntax"],
-                                        inline=False,
-                                    )
-
-                                    errors = ""
-                                    for error in validation["errors"]:
-                                        errors += "```" + error + "```"
-
-                                    nadeshotEmbed.add_field(
-                                        name="Errors", value=errors, inline=False
-                                    )
-
-                                if "error" in validation:
-                                    nadeshotEmbed.add_field(
-                                        name="Error",
-                                        value=validation["error"],
-                                        inline=False,
-                                    )
-
-                                await ctx.channel.send(embed=nadeshotEmbed)
-                    else:
-                        await ctx.channel.send("```Error: " + middleware_error + "```")
-
-                    if after:
-                        run_after_status, run_after_error, run_after_message = (
-                            self.run_middleware(ctx, after)
-                        )
-                        if not run_after_status:
-                            await ctx.channel.send(
-                                "```Error: " + run_after_error + "```"
-                            )
-                        else:
-                            if run_after_message:
-                                await ctx.channel.send(run_after_message)
-
+                        await self.reply_with(ctx, embed)
+                    return
                 else:
-                    # if no global middlewares are set
-                    # execute the program
-                    # normally
+                    prefix = self.get_command_prefix_from_message(ctx)
+                    await self.reply_with(
+                        ctx,
+                        "```Automatic command helper is disabled "
+                        "due to multi-user-type permissions.\n"
+                        f"You could use [{prefix}whatever-command help]. "
+                        "That's where helpers are generally stored.```",
+                    )
+                    return
 
-                    if (
-                        "help" in args
-                        and self.config["enable-automatic-command-helper"]
-                    ):
-                        if self.config["enable-automatic-command-helper"] == True:
-                            parser = CommandLineArgumentParser()
-                            helper = parser.build_command_helper()
+            # If user typed something else
+            provided_args_str = (
+                self.get_command_prefix_from_message(ctx)
+                + command_name
+                + " "
+                + " ".join(args)
+            )
+            parser = CommandLineArgumentParser(provided_args_str)
+            validation = parser.parse()
 
-                            if helper:
-                                nadeshotEmbed = discord.Embed(
-                                    title=self.config["bot-name"],
-                                    description="Command line helper",
-                                    color=discord.Color.blue(),
-                                )
-                                nadeshotEmbed.set_footer(
-                                    text="Powered by Nadeshot BETA"
-                                )
+            if not validation["status"]:
+                # Show errors with an embed
+                embed = discord.Embed(
+                    title=self.config["bot-name"],
+                    description="General information",
+                    color=discord.Color.blue(),
+                )
+                embed.set_footer(text="Powered by Nadeshot BETA")
 
-                                for item in helper:
-                                    name = item["name"]
-                                    command_str = item["command"]
-                                    desc = item["desc"]
-                                    authorization = item["authorization"]
-                                    arguments = item["arguments"]
+                if "errors" in validation:
+                    embed.add_field(
+                        name="Command input",
+                        value=validation["name"],
+                        inline=False,
+                    )
+                    embed.add_field(
+                        name="Description",
+                        value=validation["description"],
+                        inline=False,
+                    )
+                    embed.add_field(
+                        name="Example input",
+                        value=validation["syntax"],
+                        inline=False,
+                    )
 
-                                    values = desc + "\n" + "```" + command_str + "```\n"
-                                    nadeshotEmbed.add_field(
-                                        name=name, value=values, inline=False
-                                    )
+                    errors_agg = ""
+                    for err in validation["errors"]:
+                        errors_agg += f"```{err}```"
+                    embed.add_field(name="Errors", value=errors_agg, inline=False)
 
-                                await ctx.channel.send(embed=nadeshotEmbed)
-                        else:
-                            await ctx.channel.send(
-                                "```Automatic command helper is disabled due to multi-user-type permissions.\n"
-                                f"You could use [{self.get_command_prefix_from_message(ctx)}whatever-command help]. That's where helpers are generally stored.```"
-                            )
-                    else:
-                        providedArguments = (
-                            self.get_command_prefix_from_message(ctx)
-                            + ""
-                            + commandName
-                            + " "
-                            + " ".join(args)
-                        )
+                if "error" in validation:
+                    embed.add_field(
+                        name="Error",
+                        value=validation["error"],
+                        inline=False,
+                    )
 
-                        parser = CommandLineArgumentParser(providedArguments)
-                        validation = parser.parse()
+                await self.reply_with(ctx, embed)
+                return
 
-                        if validation["status"]:
-                            inputArguments = validation["args"]
+            # If validation passed
+            input_arguments = validation["args"]
+            authorization_list = validation["authorization"]
+            is_authorized = True
 
-                            authorization = []
-                            authorize = True
-                            middlewares = self.organize_middlewares(
-                                validation["middlewares"]
-                            )
+            if authorization_list:
+                is_authorized = self.authorize(ctx, authorization_list)
 
-                            if len(validation["authorization"]):
-                                authorization = validation["authorization"]
-                                authorize = self.authorize(ctx, authorization)
+            if not is_authorized:
+                await self.reply_with(
+                    ctx, "```This command requires special authorization.```"
+                )
+                return
 
-                            if not authorize:
-                                ctx.channel.send(
-                                    "```This command requires special authorization.```"
-                                )
-                            else:
-                                middleware_status = True
-                                middleware_error = None
-                                middleware_message = None
+            # Merge subcommand middlewares (if any) but exclude
+            # what's already run
+            sub_mw = self.organize_middlewares(validation["middlewares"])
+            before_mw = self.filter_list(sub_mw["before"], all_mw_found["before"])
+            after_mw = self.filter_list(sub_mw["after"], all_mw_found["after"])
 
-                                before = []
-                                after = []
+            # Run BEFORE subcommand middlewares
+            sub_mw_status, sub_mw_error, sub_mw_message = self.run_middleware(
+                ctx, before_mw, validation
+            )
+            if not sub_mw_status:
+                await self.reply_with(ctx, sub_mw_error)
+                return
 
-                                if middlewares:
-                                    before = middlewares["before"]
-                                    after = middlewares["after"]
+            if sub_mw_message:
+                await self.reply_with(ctx, sub_mw_message)
 
-                                    if before:
-                                        (
-                                            middleware_status,
-                                            middleware_error,
-                                            middleware_message,
-                                        ) = self.run_middleware(ctx, before, validation)
+            # Finally, run the actual command logic
+            try:
+                command_module = self.path_import("commands/" + validation["file"])
+                class_obj = getattr(command_module, validation["name"])
+            except Exception as e:
+                if self.config.get("development-mode"):
+                    await self.reply_with(
+                        ctx,
+                        f"```Error importing class: {e}\n{traceback.format_exc()}```",
+                    )
+                else:
+                    await self.reply_with(ctx, "```System Error. Contact developer```")
+                return
 
-                                if middleware_status:
-                                    if middleware_message:
-                                        await ctx.channel.send(middleware_message)
-                                    try:
-                                        commandContents = self.path_import(
-                                            "commands/" + validation["file"]
-                                        )
-                                        className = getattr(
-                                            commandContents, validation["name"]
-                                        )
-                                        try:
-                                            run = className(
-                                                self.bot,
-                                                ctx,
-                                                args,
-                                                authorization,
-                                                inputArguments,
-                                            )
-                                            await run.main()
-                                        except Exception as e:
-                                            if self.config["development-mode"]:
-                                                await ctx.channel.send(
-                                                    "```Error running class: "
-                                                    + str(e)
-                                                    + "\n"
-                                                    + str(traceback.format_exc())
-                                                    + "```"
-                                                )
-                                            else:
-                                                await ctx.channel.send(
-                                                    "```System Error. Contact developer```"
-                                                )
-                                    except Exception as e:
-                                        if self.config["development-mode"]:
-                                            await ctx.channel.send(
-                                                "```Error importing class: "
-                                                + str(e)
-                                                + "\n"
-                                                + str(traceback.format_exc())
-                                                + "```"
-                                            )
-                                        else:
-                                            await ctx.channel.send(
-                                                "```System Error. Contact developer```"
-                                            )
-                                else:
-                                    await ctx.channel.send(
-                                        "```Error: " + middleware_error + "```"
-                                    )
+            try:
+                runner = class_obj(
+                    self.bot, ctx, args, authorization_list, input_arguments
+                )
+                await runner.main()
+            except Exception as e:
+                if self.config.get("development-mode"):
+                    await self.reply_with(
+                        ctx, f"```Error running class: {e}\n{traceback.format_exc()}```"
+                    )
+                else:
+                    await self.reply_with(ctx, "```System Error. Contact developer```")
+                return
 
-                                if after:
-                                    (
-                                        run_after_status,
-                                        run_after_error,
-                                        run_after_message,
-                                    ) = self.run_middleware(ctx, after, validation)
-                                    if not run_after_status:
-                                        await ctx.channel.send(
-                                            "```Error: " + run_after_error + "```"
-                                        )
-                                    else:
-                                        if run_after_message:
-                                            await ctx.channel.send(run_after_message)
+            # Run AFTER subcommand middlewares
+            after_status, after_error, after_message = self.run_middleware(
+                ctx, after_mw, validation
+            )
+            if not after_status:
+                await self.reply_with(ctx, after_error)
+            elif after_message:
+                await self.reply_with(ctx, after_message)
 
-                        else:
-                            nadeshotEmbed = discord.Embed(
-                                title=self.config["bot-name"],
-                                description="General information",
-                                color=discord.Color.blue(),
-                            )
-                            nadeshotEmbed.set_footer(text="Powered by Nadeshot BETA")
+            # Run AFTER global middlewares
+            global_after_status, global_after_error, global_after_msg = (
+                self.run_middleware(ctx, global_mw["after"])
+            )
+            if not global_after_status:
+                await self.reply_with(ctx, global_after_error)
+            elif global_after_msg:
+                await self.reply_with(ctx, global_after_msg)
 
-                            if "errors" in validation:
-                                nadeshotEmbed.add_field(
-                                    name="Command input",
-                                    value=validation["name"],
-                                    inline=False,
-                                )
-                                nadeshotEmbed.add_field(
-                                    name="Description",
-                                    value=validation["description"],
-                                    inline=False,
-                                )
-                                nadeshotEmbed.add_field(
-                                    name="Example input",
-                                    value=validation["syntax"],
-                                    inline=False,
-                                )
+    # --------------------------------------------------------------------------
+    # Main Bot Runner
+    # --------------------------------------------------------------------------
 
-                                errors = ""
-                                for error in validation["errors"]:
-                                    errors += "```" + error + "```"
-
-                                nadeshotEmbed.add_field(
-                                    name="Errors", value=errors, inline=False
-                                )
-
-                            if "error" in validation:
-                                nadeshotEmbed.add_field(
-                                    name="Error",
-                                    value=validation["error"],
-                                    inline=False,
-                                )
-
-                            await ctx.channel.send(embed=nadeshotEmbed)
-
-    def boot(self):
+    def run_bot(self) -> None:
+        """
+        Starts the bot using the provided bot token, handling any
+        invalid-token errors.
+        """
         try:
             self.logging.success(f"Bot: {self.bot_name} started running...")
             self.logging.info("Awaiting user input...")
             self.bot.run(token=self.bot_token)
         except Exception as e:
             self.logging.error(
-                f"Bot token: [{self.bot_token}] is invalid. Please check."
+                f"Failed to start bot with token [{self.bot_token}]. " f"Error: {e}"
             )

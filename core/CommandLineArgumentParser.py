@@ -2,10 +2,9 @@ import json
 import re
 from from_root import from_root
 
+
 # This file has been improved
 # and refactored by GPT 4o
-
-
 class CommandLineArgumentParser:
     """
     A class to parse command-line arguments from Discord-style input strings
@@ -16,6 +15,53 @@ class CommandLineArgumentParser:
         self.input = self._process_input_string(command_input)
         self.commands_list = self._load_commands()
         self.command_prefixes = ["!", ".", "?", "/", ">"]
+
+    def flatten_dict_to_list(self, input_dict: dict) -> list:
+        """
+        Flattens a dictionary into a list of tokens by iterating over its items.
+        Each key and its corresponding value (if not None) are added sequentially
+        to the list. If a value is None, only the key is added.
+        """
+        tokens = []
+        for key, value in input_dict.items():
+            tokens.append(key)
+            if value is not None:
+                tokens.append(value)
+        return tokens
+
+    def pair_tokens(self, tokens: any) -> dict:
+        """
+        Processes a list of tokens or a dictionary of tokens into overlapping key-value pairs.
+        If a dictionary is provided, it will be flattened into a list first.
+        Each token will be paired with the next token as its value. The last token
+        will have a value of None.
+
+        Example:
+        Input: ['/dth', 'search', 'whatever']
+        Output: {'/dth': 'search', 'search': 'whatever', 'whatever': None}
+        """
+        # If input is a dict, flatten it first
+        if isinstance(tokens, dict):
+            tokens = self.flatten_dict_to_list(tokens)
+
+        result: dict = {}
+        if len(tokens) > 0:
+            # will ensure that the command prefixes
+            # are actually skipped
+            cleaned_tokens = []
+            for token in tokens:
+                for prefix in self.command_prefixes:
+                    if prefix in str(token):
+                        token = token.replace(prefix, "")
+                cleaned_tokens.append(token)
+            tokens = cleaned_tokens
+
+            for i in range(len(tokens)):
+                key = tokens[i]
+                # If there's a next token, pair with it; otherwise, pair with None
+                next_value = tokens[i + 1] if (i + 1) < len(tokens) else None
+                result[key] = next_value
+        return result
 
     def _process_input_string(self, input_string: str) -> str:
         """
@@ -449,7 +495,7 @@ class CommandLineArgumentParser:
                 "file": file_path,
                 "authorization": authorization,
                 "syntax": command_syntax,
-                "args": args,
+                "args": self.pair_tokens(args),
                 "hasValue": has_value,
                 "middlewares": middlewares,
                 "slashCommand": is_slash,
