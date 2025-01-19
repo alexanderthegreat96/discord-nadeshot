@@ -49,10 +49,12 @@ class CommandLineArgumentParser:
             # will ensure that the command prefixes
             # are actually skipped
             cleaned_tokens = []
-            for token in tokens:
-                for prefix in self.command_prefixes:
-                    if prefix in str(token):
-                        token = token.replace(prefix, "")
+            # Remove prefixes only for the first token
+            for index, token in enumerate(tokens):
+                if index == 0:
+                    for prefix in self.command_prefixes:
+                        if prefix in str(token):
+                            token = token.replace(prefix, "")
                 cleaned_tokens.append(token)
             tokens = cleaned_tokens
 
