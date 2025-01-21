@@ -1,44 +1,50 @@
 {
   "commands": {
-    "Second": {
-      "syntax": "!second",
-      "description": "Awaiting developer description",
-      "filePath": "Second.py",
-      "authorization": [
-        "admin"
-      ],
-      "hasValue": false,
-      "slashCommand": false,
-      "middlewares": [
-        "before_command"
-      ],
-      "arguments": {}
+    "My": {
+      "authorization": [],
+      "middlewares": [],
+      "commands": {
+        "FirstCommand": {
+          "syntax": "/my first-command",
+          "description": "Awaiting developer description",
+          "filePath": "my/FirstCommand.py",
+          "authorization": [],
+          "hasValue": false,
+          "slashCommand": false,
+          "middlewares": [],
+          "arguments": {}
+        },
+        "SecondCommand": {
+          "syntax": "/my second-command",
+          "description": "Awaiting developer description",
+          "filePath": "my/SecondCommand.py",
+          "authorization": [],
+          "hasValue": false,
+          "slashCommand": false,
+          "middlewares": [],
+          "arguments": {}
+        },
+        "ThirdCommand": {
+          "syntax": "!my third-command",
+          "description": "Awaiting developer description",
+          "filePath": "my/ThirdCommand.py",
+          "authorization": [],
+          "hasValue": false,
+          "slashCommand": false,
+          "middlewares": [],
+          "arguments": {}
+        }
+      }
     },
-    "Third": {
-      "syntax": "?third",
+    "Testing": {
+      "syntax": "!testing",
       "description": "Awaiting developer description",
-      "filePath": "Third.py",
+      "filePath": "Testing.py",
       "authorization": [],
       "hasValue": false,
       "slashCommand": false,
       "middlewares": [],
       "arguments": {}
-    },
-    "first": {
-      "commands": {
-        "Sub": {
-          "syntax": "/first sub",
-          "description": "Awaiting developer description",
-          "filePath": "first/Sub.py",
-          "authorization": [],
-          "hasValue": false,
-          "slashCommand": false,
-          "arguments": {},
-          "middlewares": [
-            "before_command"
-          ]
-        }
-      }
     }
   }
 }

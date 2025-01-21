@@ -17,7 +17,7 @@ def commands():
 @click.argument("name")
 @click.argument("prefix")
 def generate_command(name: str, prefix: str):
-    parts: list = name.strip().split(" ")
+    parts: list = name.strip().split("/")
     if "-" in parts[0]:
         print(
             "Cannot generate a command where the first portion contains a dash.\n"

@@ -4,7 +4,7 @@ from utils.discord_server import DiscordServer
 from utils.discord_user import DiscordUser
 
 
-class Second:
+class FirstCommand:
     def __init__(
         self,
         bot: commands.Bot,
@@ -27,6 +27,4 @@ class Second:
         await self.response.send(
             f"```Hi, {self.discord_user.username}, you are running the command from {self.discord_server.server_name}```"
         )
-        await self.response.send(
-            "```This is the Second command output within commands folder.```"
-        )
+        await self.response.send("```This is the FirstCommand command output within commands folder.```")
