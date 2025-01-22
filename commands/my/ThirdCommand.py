@@ -27,4 +27,6 @@ class ThirdCommand:
         await self.response.send(
             f"```Hi, {self.discord_user.username}, you are running the command from {self.discord_server.server_name}```"
         )
-        await self.response.send("```This is the ThirdCommand command output within commands folder.```")
+        await self.response.send(
+            "```This is the ThirdCommand command output within commands folder.```"
+        )

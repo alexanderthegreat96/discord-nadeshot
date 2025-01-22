@@ -35,7 +35,7 @@ from core.MultiBotHandler import MultiBotHandler
 from utils.cooldown_immune import CooldownImmune
 from utils.discord_user import DiscordUser
 from utils.error_handler import ErrorHandler
-from utils.synced import Synced
+from utils.command_logger import CommandLogger
 
 
 # This code has been cleaned up
@@ -667,9 +667,7 @@ class Bot:
                 error_trace = "".join(
                     traceback.format_exception(type(error), error, error.__traceback__)
                 )
-                err_handler = ErrorHandler(
-                    ctx.message.content, str(error), error_trace, self.logging
-                )
+                err_handler = ErrorHandler(ctx, str(error), error_trace, self.logging)
                 await err_handler.main()
                 await ctx.send(
                     f"```{self.config['bot-name']} ran into a problem. "
@@ -854,6 +852,9 @@ class Bot:
             )
             parser = CommandLineArgumentParser(provided_args_str)
             validation = parser.parse()
+
+            command_logger: CommandLogger = CommandLogger(self.logging, ctx, validation)
+            command_logger.log()
 
             if not validation["status"]:
                 # Show errors with an embed

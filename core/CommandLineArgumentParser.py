@@ -638,7 +638,7 @@ class CommandLineArgumentParser:
 
         # Flatten to get an array of all commands
         all_commands = self.pull_commands_in_same_array()
-     
+
         for cmd in all_commands:
             if not cmd["command"]:
                 errors.append(f"[syntax] in '{cmd['name']}' was not declared.")

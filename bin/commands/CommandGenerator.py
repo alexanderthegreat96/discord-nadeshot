@@ -36,7 +36,9 @@ class GenerateCommand:
                 with open(commands_json_path, "r+", encoding="utf-8") as f:
                     try:
                         data = json.load(f)
-                        if "commands" not in data or not isinstance(data["commands"], dict):
+                        if "commands" not in data or not isinstance(
+                            data["commands"], dict
+                        ):
                             data["commands"] = {}
                             f.seek(0)
                             f.truncate()
@@ -47,7 +49,9 @@ class GenerateCommand:
                         f.truncate()
                         json.dump({"commands": {}}, f, indent=2)
             except Exception as e:
-                print(f"Error ensuring 'commands' key in config/commands.json. Error: {e}")
+                print(
+                    f"Error ensuring 'commands' key in config/commands.json. Error: {e}"
+                )
 
     def generate_command_name(self, command_parts: List[str]) -> str:
         """
@@ -63,7 +67,9 @@ class GenerateCommand:
             return "".join(self.reformat_text(command_parts))
         return "".join(self.reformat_text([command_parts[0]]))
 
-    def write_py_files(self, class_name: Optional[str], file_path: Optional[str]) -> Dict[str, Union[bool, str]]:
+    def write_py_files(
+        self, class_name: Optional[str], file_path: Optional[str]
+    ) -> Dict[str, Union[bool, str]]:
         """
         Write a Python command file with a basic template.
 
@@ -90,7 +96,7 @@ class GenerateCommand:
         if path.exists(full_file_path):
             return {
                 "status": False,
-                "error": f"File: [{full_file_path}] already exists."
+                "error": f"File: [{full_file_path}] already exists.",
             }
 
         # If necessary, create subdirectories
@@ -122,11 +128,11 @@ class GenerateCommand:
             "        self.discord_user: DiscordUser = DiscordUser(ctx)\n\n"
             "    async def main(self) -> None:\n"
             "        await self.response.send(\n"
-            "            f\"```Hi, {self.discord_user.username}, you are running the command "
-            f"from {{self.discord_server.server_name}}```\"\n"
+            '            f"```Hi, {self.discord_user.username}, you are running the command '
+            f'from {{self.discord_server.server_name}}```"\n'
             "        )\n"
-            f"        await self.response.send(\"```This is the {class_name} command "
-            "output within commands folder.```\")\n"
+            f'        await self.response.send("```This is the {class_name} command '
+            'output within commands folder.```")\n'
         )
 
         # Attempt to write file
@@ -136,12 +142,12 @@ class GenerateCommand:
 
             return {
                 "status": True,
-                "message": f"Command file [{final_file_name}] created in [{full_dir_path}]."
+                "message": f"Command file [{final_file_name}] created in [{full_dir_path}].",
             }
         except Exception as e:
             return {
                 "status": False,
-                "error": f"Unable to open and write data to: {full_file_path}. Error: {e}"
+                "error": f"Unable to open and write data to: {full_file_path}. Error: {e}",
             }
 
     def capitalize_slugged_input(self, string: str) -> List[str]:
@@ -208,10 +214,7 @@ class GenerateCommand:
         return uppercase_list
 
     def make_command_array(
-        self,
-        command_name: str,
-        command_string: str,
-        command_file_path: str
+        self, command_name: str, command_string: str, command_file_path: str
     ) -> Optional[Dict[str, Dict[str, Any]]]:
         """
         Build a nested dictionary structure for the given command.
@@ -322,24 +325,29 @@ class GenerateCommand:
                 if root_command_key in data["commands"]:
                     existing_root_data = data["commands"][root_command_key]
                     # A single command would not have a "commands" dict
-                    if isinstance(existing_root_data, dict) and "commands" not in existing_root_data:
+                    if (
+                        isinstance(existing_root_data, dict)
+                        and "commands" not in existing_root_data
+                    ):
                         return {
                             "status": False,
                             "error": (
                                 f"Cannot implement '{self.input}' "
                                 f"because '{root_command}' is already defined as a single command."
-                            )
+                            ),
                         }
 
                 command_class_name = self.generate_class_name(command_parts)
                 command_name = self.generate_command_name(command_parts)
 
                 # Use the prefix instead of hardcoded "/"
-                command_string = f"{self.prefix}{root_command} {' '.join(command_parts)}"
+                command_string = (
+                    f"{self.prefix}{root_command} {' '.join(command_parts)}"
+                )
 
                 file_path = os.path.join(
                     root_command,
-                    self.generate_file_path(command_parts, command_class_name)
+                    self.generate_file_path(command_parts, command_class_name),
                 )
 
                 command_array = self.make_command_array(
@@ -347,14 +355,17 @@ class GenerateCommand:
                 )
 
                 if command_array is None:
-                    return {"status": False, "message": "Failed to build command array."}
+                    return {
+                        "status": False,
+                        "message": "Failed to build command array.",
+                    }
 
                 # If the capitalized key does not exist or is a dict with "commands", we can add subcommands
                 if root_command_key not in data["commands"]:
                     data["commands"][root_command_key] = {
                         "authorization": [],
                         "middlewares": [],
-                        "commands": command_array
+                        "commands": command_array,
                     }
                 else:
                     data["commands"][root_command_key]["commands"].update(command_array)
