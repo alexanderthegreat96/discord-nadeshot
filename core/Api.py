@@ -45,8 +45,6 @@ class ApiActions:
         self.logger = Logger("API Actions").get_logger()
 
     def retry_request(func):
-        """Decorator to retry request on failure or rate-limiting (429)."""
-
         @wraps(func)
         def wrapper(self, *args, **kwargs):
             retries = 0
@@ -54,19 +52,30 @@ class ApiActions:
                 try:
                     response = func(self, *args, **kwargs)
 
+                    # If success
                     if response.status_code in [200, 201, 204]:
-                        return {"status": True}
+                        # Try to parse JSON if it’s likely a GET request
+                        if response.request.method == "GET":
+                            try:
+                                data = response.json()
+                                return {"status": True, "data": data}
+                            except ValueError:
+                                # maybe it's a 204 or otherwise no JSON
+                                return {"status": True, "data": None}
+                        else:
+                            # For non-GET calls, 
+                            # "sending a message" might just need status = True
+                            return {"status": True}
+
                     elif response.status_code == 429:
-                        retry_after = response.json().get(
-                            "retry_after", self.RETRY_DELAY
-                        )
+                        retry_after = response.json().get("retry_after", self.RETRY_DELAY)
                         self.logger.warning(
-                            f"Rate limited, retrying in {retry_after} seconds..."
+                            f"Rate limited, retrying in {retry_after} second(s)..."
                         )
                         time.sleep(retry_after)
                     else:
                         self.logger.error(
-                            f"Failed to send request: {response.status_code} - {response.text}"
+                            f"Request failed: {response.status_code} - {response.text}"
                         )
                         return {
                             "status": False,
@@ -75,13 +84,13 @@ class ApiActions:
                         }
 
                 except requests.RequestException as e:
-                    self.logger.error(f"Request error while sending message: {e}")
+                    self.logger.error(f"Request exception: {e}")
                     return {"status": False, "error": f"Error: {e}"}
 
                 retries += 1
                 time.sleep(self.RETRY_DELAY)
-            return {"status": False, "error": "Max retries reached"}
 
+            return {"status": False, "error": "Max retries reached"}
         return wrapper
 
     def get_age_in_days_from_id(self, entity_id: int) -> int:
@@ -98,7 +107,7 @@ class ApiActions:
     def send_message_to_channel(self, channel_id: int, data: any):
         """Send logs to a Discord channel."""
         url = f"{self.api_base_url}/channels/{channel_id}/messages"
-        payload = {"content": f"```{data}```"}
+        payload = {"content": f"{data}"}
         return requests.post(
             url,
             headers={
@@ -112,7 +121,7 @@ class ApiActions:
     def send_dm(self, user_id: int, data: any):
         """Send a direct message to a user."""
         url = f"{self.api_base_url}/users/{user_id}/messages"
-        payload = {"content": f"```{data}```"}
+        payload = {"content": f"{data}"}
         return requests.post(
             url,
             headers={
@@ -367,5 +376,23 @@ class ApiActions:
             url,
             headers={
                 "Authorization": f"Bot {self.bot_token}",
+            },
+        )
+
+    @retry_request
+    def get_channel_messages(self, channel_id : int = 0, limit: int = 1):
+        """
+        Will grab the messages from the specified channel
+        Args:
+            channel_id (int, optional): _description_. Defaults to 0.
+            limit (int, optional): _description_. Defaults to 1.
+        """
+        
+        url = f"https://discord.com/api/v10/channels/{channel_id}/messages?limit={limit}"
+        return requests.get(
+            url,
+            headers={
+                "Authorization": f"Bot {self.bot_token}",
+                "Content-Type": "application/json"
             },
         )

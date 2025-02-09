@@ -363,6 +363,9 @@ class Bot:
         if hours == 0 and minutes == 0 and seconds == 0:
             return "The task will run continuously."
 
+        if hours > 0 and minutes == 0 and seconds == 0:
+            return f"The task will run every {hours} hour{'s' if hours != 1 else ''}."
+
         if hours == 0 and minutes == 0:
             return f"The task will run every {seconds} second{'s' if seconds != 1 else ''}."
 
@@ -370,7 +373,7 @@ class Bot:
             return f"The task will run every {minutes} minute{'s' if minutes != 1 else ''}."
 
         if minutes == 0 and seconds == 0:
-            return "The task will run hourly."
+            return f"The task will run every {hours} hour{'s' if hours != 1 else ''}."
 
         if hours == 0:
             return (
@@ -853,6 +856,8 @@ class Bot:
             parser = CommandLineArgumentParser(provided_args_str)
             validation = parser.parse()
 
+            # Global command input logger
+            # will allow effective input logging
             command_logger: CommandLogger = CommandLogger(self.logging, ctx, validation)
             command_logger.log()
 
