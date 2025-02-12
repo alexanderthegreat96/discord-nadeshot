@@ -1,30 +1,30 @@
-import logging
+from core.Logger import Logger
 from redis import Redis, ConnectionError
 from from_root import from_root
 from core.EnvParser import EnvParser
 import time
 
 # Set up logging
-logging.basicConfig(level=logging.INFO)
+logging = Logger("Redis-Cache").get_logger()
 
 
 class Cache:
     def __init__(self, global_cache_key: str = None):
         # Parse environment variables
         env = EnvParser(from_root(".env"))
-        self.__host: str = env.get(which="REDIS_HOST", default="isac-api-redis")
+        self.__host: str = env.get(which="REDIS_HOST", default="nadeshot-redis")
         self.__port: int = env.get(which="REDIS_PORT", default=6379)
-        self.__password: str = env.get(which="REDIS_PASS", default="isac-api-redis")
-        self.__cache_key: str = env.get(which="REDIS_GLOBAL_CACHE_KEY", default=None)
+        self.__password: str = env.get(which="REDIS_PASS", default="nadeshot-redis")
+        self.__cache_key: str = env.get(
+            which="REDIS_GLOBAL_CACHE_KEY", default="nadeshot-bot"
+        )
 
         # Set global cache key
         self.__global_cache_key: str = None
-        if not self.__cache_key:
-            self.__global_cache_key = (
-                global_cache_key + ":" if global_cache_key else None
-            )
+        if not global_cache_key:
+            self.__global_cache_key = f"{self.__cache_key}:"
         else:
-            self.__global_cache_key = self.__cache_key + ":"
+            self.__global_cache_key = f"{global_cache_key}:" or "test-cache-key"
 
         # Establish Redis connection
         self.__redis = self.connect()
@@ -137,7 +137,7 @@ class Cache:
             return {"status": False, "error": "No cache key provided."}
 
         try:
-            full_key = self.__global_cache_key + key
+            full_key = f"{self.__global_cache_key}{key}"
             existing_data = self.get_data(key)
 
             if existing_data["status"]:
@@ -262,3 +262,39 @@ class Cache:
                     logging.warning(clear_result["error"])
             except Exception as e:
                 logging.error(f"Failed to clear unique set '{unique_set_name}': {e}")
+
+    def clear_cache(self, prefix: str = None) -> dict:
+        """Clear all cached keys in Redis that start with the given prefix."""
+
+        if prefix is None:
+            prefix = self.__global_cache_key
+        else:
+            prefix = f"{self.__global_cache_key}{prefix}"
+
+        try:
+            if not prefix.endswith(":"):
+                prefix += ":"
+
+            def _clear_keys():
+                """Inner function to clear keys matching the prefix."""
+                cursor = 0
+                deleted_keys_count = 0
+
+                while True:
+                    cursor, keys = self.__redis.scan(cursor=cursor, match=f"{prefix}*")
+                    if keys:
+                        self.__redis.delete(*keys)
+                        deleted_keys_count += len(keys)
+
+                    if cursor == 0:
+                        break
+
+                return {
+                    "status": True,
+                    "message": f"Cleared {deleted_keys_count} keys with prefix '{prefix}'.",
+                }
+
+            return self._execute_with_reconnect(_clear_keys)
+        except Exception as e:
+            logging.error(f"Failed to clear cache with prefix '{prefix}': {e}")
+            return {"status": False, "error": f"Failed to clear cache: {e}"}
