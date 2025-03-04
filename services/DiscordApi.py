@@ -63,12 +63,14 @@ class DiscordApi:
                                 # maybe it's a 204 or otherwise no JSON
                                 return {"status": True, "data": None}
                         else:
-                            # For non-GET calls, 
+                            # For non-GET calls,
                             # "sending a message" might just need status = True
                             return {"status": True}
 
                     elif response.status_code == 429:
-                        retry_after = response.json().get("retry_after", self.RETRY_DELAY)
+                        retry_after = response.json().get(
+                            "retry_after", self.RETRY_DELAY
+                        )
                         self.logger.warning(
                             f"Rate limited, retrying in {retry_after} second(s)..."
                         )
@@ -91,6 +93,7 @@ class DiscordApi:
                 time.sleep(self.RETRY_DELAY)
 
             return {"status": False, "error": "Max retries reached"}
+
         return wrapper
 
     def get_age_in_days_from_id(self, entity_id: int) -> int:
@@ -380,19 +383,21 @@ class DiscordApi:
         )
 
     @retry_request
-    def get_channel_messages(self, channel_id : int = 0, limit: int = 1):
+    def get_channel_messages(self, channel_id: int = 0, limit: int = 1):
         """
         Will grab the messages from the specified channel
         Args:
             channel_id (int, optional): _description_. Defaults to 0.
             limit (int, optional): _description_. Defaults to 1.
         """
-        
-        url = f"https://discord.com/api/v10/channels/{channel_id}/messages?limit={limit}"
+
+        url = (
+            f"https://discord.com/api/v10/channels/{channel_id}/messages?limit={limit}"
+        )
         return requests.get(
             url,
             headers={
                 "Authorization": f"Bot {self.bot_token}",
-                "Content-Type": "application/json"
+                "Content-Type": "application/json",
             },
         )

@@ -944,7 +944,9 @@ class Bot:
                         f"```Error importing class: {e}\n{traceback.format_exc()}```",
                     )
                 else:
-                    error_handler = ErrorHandler(ctx, str(e), traceback.format_exc(), self.logging)
+                    error_handler = ErrorHandler(
+                        ctx, str(e), traceback.format_exc(), self.logging
+                    )
                     await error_handler.main()
                     await self.reply_with(ctx, "```System Error. Contact developer```")
                 return
@@ -960,7 +962,9 @@ class Bot:
                         ctx, f"```Error running class: {e}\n{traceback.format_exc()}```"
                     )
                 else:
-                    error_handler = ErrorHandler(ctx, str(e), traceback.format_exc(), self.logging)
+                    error_handler = ErrorHandler(
+                        ctx, str(e), traceback.format_exc(), self.logging
+                    )
                     await error_handler.main()
                     await self.reply_with(ctx, "```System Error. Contact developer```")
                 return
