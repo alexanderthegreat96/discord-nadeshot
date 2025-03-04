@@ -122,16 +122,37 @@ class DiscordApi:
 
     @retry_request
     def send_dm(self, user_id: int, data: any):
-        """Send a direct message to a user."""
-        url = f"{self.api_base_url}/users/{user_id}/messages"
-        payload = {"content": f"{data}"}
-        return requests.post(
-            url,
+        """Send a direct message to a user (ensure DM channel exists first)."""
+        # Step 1: Create a DM channel
+        dm_response = requests.post(
+            f"{self.api_base_url}/users/@me/channels",
             headers={
                 "Authorization": f"Bot {self.bot_token}",
                 "Content-Type": "application/json",
             },
-            json=payload,
+            json={"recipient_id": user_id},
+        )
+
+        if dm_response.status_code != 200:
+            self.logger.error(f"Failed to create DM channel: {dm_response.text}")
+            return {"status": False, "error": dm_response.text}
+
+        # Step 2: Extract channel ID
+        channel_id = dm_response.json().get("id")
+        if not channel_id:
+            return {
+                "status": False,
+                "error": "No channel ID returned from DM creation.",
+            }
+
+        # Step 3: Send the message to the DM channel
+        return requests.post(
+            f"{self.api_base_url}/channels/{channel_id}/messages",
+            headers={
+                "Authorization": f"Bot {self.bot_token}",
+                "Content-Type": "application/json",
+            },
+            json={"content": str(data)},
         )
 
     @retry_request
@@ -151,10 +172,32 @@ class DiscordApi:
     @retry_request
     def send_embed_to_dm(self, user_id: int, embed: dict):
         """Send an embed message to a user's DM."""
-        url = f"{self.api_base_url}/users/{user_id}/messages"
+        # First, create (or fetch) the DM channel with the user.
+        create_dm_url = f"{self.api_base_url}/users/@me/channels"
+        dm_payload = {"recipient_id": user_id}
+        dm_response = requests.post(
+            create_dm_url,
+            headers={
+                "Authorization": f"Bot {self.bot_token}",
+                "Content-Type": "application/json",
+            },
+            json=dm_payload,
+        )
+
+        # Check if the DM channel was created successfully.
+        if dm_response.status_code != 200:
+            raise Exception(f"Failed to create DM channel: {dm_response.text}")
+
+        dm_channel = dm_response.json()
+        channel_id = dm_channel.get("id")
+        if not channel_id:
+            raise Exception("No channel ID returned from DM channel creation.")
+
+        # Now, send the embed message to the DM channel.
+        send_message_url = f"{self.api_base_url}/channels/{channel_id}/messages"
         payload = {"embeds": [embed]}
         return requests.post(
-            url,
+            send_message_url,
             headers={
                 "Authorization": f"Bot {self.bot_token}",
                 "Content-Type": "application/json",
