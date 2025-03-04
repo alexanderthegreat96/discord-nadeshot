@@ -1,5 +1,5 @@
 from discord.ext import commands
-from utils.synced import Synced
+from core.SyncedResponse import SyncedResponse
 from utils.discord_server import DiscordServer
 from utils.discord_user import DiscordUser
 
@@ -19,7 +19,7 @@ class ThirdCommand:
         self.args: tuple = args
         self.input_arguments: dict = input_arguments
 
-        self.response: Synced = Synced(ctx)
+        self.response: SyncedResponse = SyncedResponse(ctx)
         self.discord_server: DiscordServer = DiscordServer(ctx)
         self.discord_user: DiscordUser = DiscordUser(ctx)
 

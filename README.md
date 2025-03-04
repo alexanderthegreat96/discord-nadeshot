@@ -252,14 +252,14 @@ There are several other components that can be used to manipulate responses, han
    - Contains a class which gets called during errors. This can be used to actually tap into errors and do something with them
  - ### core.EnvParser
    - This is my custom implementation for reading environment variables. I wanted something that has 0 dependencies and supports a few more features than traditional packages
- - ### core.Api.ApiActions
+ - ### core.Api.DiscordApi
     - This is a HTTP Request Wrapper that interacts with Didscord's RESTful API. This was implemented as a necessitiy, since the concurrent task mechanism boots up new threads, we cannot hook into the traditional async / await main thread. Therefore, we must run them in sync and not async.
 - ### core.Cache
     - A class I built to interact with redis. It's useful for storing data, queueig, dequeueing data
 - ### core.Logger
     - This is nothing more than a wrapper around python's std logger, but with color coding and custom structure.
-- ### utils.Synced 
-    - This is a class that will sync responses to each user avoiding overlapping responses for multiple commands. You should not use self.ctx.response, instead, use Synced.
+- ### utils.SyncedResponse 
+    - This is a class that will sync responses to each user avoiding overlapping responses for multiple commands. You should not use self.ctx.response, instead, use SyncedResponse.
 - ### utils.GuildWrapper
     - Nothing more than a wrapper used for the Guild object. It serves as an elegant way to get data from it.
 - ### utils.MemberWrapper

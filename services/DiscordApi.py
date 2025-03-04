@@ -33,7 +33,7 @@ class Embed:
         return self.embed
 
 
-class ApiActions:
+class DiscordApi:
     DISCORD_EPOCH = 1420070400000
     MAX_RETRIES = 5
     RETRY_DELAY = 2

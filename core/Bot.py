@@ -32,10 +32,10 @@ from core.CommandLineArgumentParser import CommandLineArgumentParser
 from core.EnvParser import EnvParser
 from core.Logger import Logger
 from core.MultiBotHandler import MultiBotHandler
-from utils.cooldown_immune import CooldownImmune
+from core.CooldownImmune import CooldownImmune
 from utils.discord_user import DiscordUser
-from utils.error_handler import ErrorHandler
-from utils.command_logger import CommandLogger
+from core.ErrorHandler import ErrorHandler
+from core.CommandLogger import CommandLogger
 
 
 # This code has been cleaned up

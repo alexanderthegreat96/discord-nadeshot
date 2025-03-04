@@ -106,7 +106,7 @@ class GenerateCommand:
         # Template content
         content = (
             "from discord.ext import commands\n"
-            "from utils.synced import Synced\n"
+            "from utils.SyncedResponse import SyncedResponse\n"
             "from utils.discord_server import DiscordServer\n"
             "from utils.discord_user import DiscordUser\n\n\n"
             f"class {class_name}:\n"
@@ -123,7 +123,7 @@ class GenerateCommand:
             "        self.authorization: str = authorization\n"
             "        self.args: tuple = args\n"
             "        self.input_arguments: dict = input_arguments\n\n"
-            "        self.response: Synced = Synced(ctx)\n"
+            "        self.response: SyncedResponse = SyncedResponse(ctx)\n"
             "        self.discord_server: DiscordServer = DiscordServer(ctx)\n"
             "        self.discord_user: DiscordUser = DiscordUser(ctx)\n\n"
             "    async def main(self) -> None:\n"

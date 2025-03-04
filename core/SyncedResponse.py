@@ -5,7 +5,7 @@ from discord.ext.commands import Context
 from core.Logger import Logger
 
 
-class Synced:
+class SyncedResponse:
     _queues = defaultdict(asyncio.Queue)  # Queue for each user-channel-origin triplet
     _processing_tasks = {}  # Track tasks per user-channel-origin
     _lock = asyncio.Lock()  # Ensure thread safety for shared state
@@ -16,7 +16,7 @@ class Synced:
         self.channel_id = ctx.channel.id
         self.origin = origin  # Differentiate queues by origin
 
-        self.logger = Logger("Synced").get_logger()
+        self.logger = Logger("SyncedResponse").get_logger()
 
     async def send(self, content: any):
         queue_key = (self.user_id, self.channel_id, self.origin)
