@@ -106,7 +106,7 @@ class GenerateCommand:
         # Template content
         content = (
             "from discord.ext import commands\n"
-            "from utils.SyncedResponse import SyncedResponse\n"
+            "from core.SyncedResponse import SyncedResponse\n"
             "from utils.discord_server import DiscordServer\n"
             "from utils.discord_user import DiscordUser\n\n\n"
             f"class {class_name}:\n"
