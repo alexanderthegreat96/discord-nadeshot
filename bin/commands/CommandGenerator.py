@@ -120,7 +120,7 @@ class GenerateCommand:
             "    ) -> None:\n"
             "        self.bot: commands.Bot = bot\n"
             "        self.ctx: commands.Context = ctx\n"
-            "        self.authorization: str = authorization\n"
+            "        self.authorization: list = authorization\n"
             "        self.args: tuple = args\n"
             "        self.input_arguments: dict = input_arguments\n\n"
             "        self.response: SyncedResponse = SyncedResponse(ctx)\n"

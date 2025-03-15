@@ -11,7 +11,7 @@ from art import *
 tprint("Nadeshot v2.0")
 
 system = Bot()
-commands = system.command_list()
+commands = system._command_list()
 
 if commands:
     for command in commands:
@@ -19,9 +19,10 @@ if commands:
         if not is_slash_command:
             system.add_commands(command)
 
-tasks = system.task_list()
+tasks = system._task_list()
 
 if tasks:
     for task in tasks:
         system.add_tasks(task)
-system.boot()
+system.run_bot()
+                      
