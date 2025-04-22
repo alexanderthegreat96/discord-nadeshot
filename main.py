@@ -11,7 +11,7 @@ from art import *
 tprint("Nadeshot v2.0")
 
 system = Bot()
-commands = system._command_list()
+commands = system.parsed_command_list()
 
 if commands:
     for command in commands:

@@ -6,6 +6,7 @@
       "hours": 1,
       "minutes": 0,
       "seconds": 0,
+      "last_ran_at": "2023-10-01T12:00:00Z",
       "enabled": true
     },
     "AnotherTask": {

@@ -113,7 +113,7 @@ class Bot:
             self.logging.error(f"Error loading bot config: {e}")
             return {}
 
-    def _command_list(self) -> Dict[str, Any]:
+    def parsed_command_list(self) -> Dict[str, Any]:
         """
         Loads the command list from config/commands.json.
 
@@ -347,77 +347,93 @@ class Bot:
     # Task Scheduling & Management
     # --------------------------------------------------------------------------
 
-    def get_task_schedule_message(self, hours: int, minutes: int, seconds: int) -> str:
+    def get_task_schedule_message(
+            self,
+            hours: int,
+            minutes: int,
+            seconds: int,
+            last_ran_at: str | None = None,      # ← NEW (ISO‑8601 UTC or None)
+    ) -> str:
         """
-        Generates a human-readable message about the task schedule
-        based on hours, minutes, and seconds.
+        Return a human‑readable description of the task interval **and**
+        the timestamp for the next execution (UTC).
 
-        Args:
-            hours (int): Number of hours between each task run.
-            minutes (int): Number of minutes between each task run.
-            seconds (int): Number of seconds between each task run.
-
-        Returns:
-            str: A descriptive message about how frequently the task runs.
+        Example:
+            "Runs every 30 m, next run at 2025‑04‑22 13:45:02 UTC (in 12 m 5 s)."
         """
-        if hours == 0 and minutes == 0 and seconds == 0:
-            return "The task will run continuously."
+        # ------------------------------------------------------------
+        # 1. Build the frequency part  (unchanged logic, compacted)
+        # ------------------------------------------------------------
+        if hours == minutes == seconds == 0:
+            freq = "Runs continuously."
+        else:
+            parts = []
+            if hours:
+                parts.append(f"{hours} hour{'s' if hours != 1 else ''}")
+            if minutes:
+                parts.append(f"{minutes} minute{'s' if minutes != 1 else ''}")
+            if seconds:
+                parts.append(f"{seconds} second{'s' if seconds != 1 else ''}")
+            freq = "Runs every " + ", ".join(parts[:-1]) + (
+                "" if len(parts) < 2 else ", and "
+            ) + parts[-1] + "."
 
-        if hours > 0 and minutes == 0 and seconds == 0:
-            return f"The task will run every {hours} hour{'s' if hours != 1 else ''}."
+        # ------------------------------------------------------------
+        # 2. Compute next‑run based on last_ran_at   (if provided)
+        # ------------------------------------------------------------
+        interval = hours * 3600 + minutes * 60 + seconds
+        if not interval or not last_ran_at:
+            # Fire immediately / continuously – no need for a next‑run clause
+            return freq
 
-        if hours == 0 and minutes == 0:
-            return f"The task will run every {seconds} second{'s' if seconds != 1 else ''}."
+        try:
+            # Accept both "...Z" or "+00:00"
+            last_dt = datetime.fromisoformat(last_ran_at.replace("Z", "+00:00"))
+        except Exception:
+            return f"{freq} (cannot parse last_ran_at)"
 
-        if hours == 0 and seconds == 0:
-            return f"The task will run every {minutes} minute{'s' if minutes != 1 else ''}."
+        next_run = last_dt + timedelta(seconds=interval)
+        now = datetime.now(timezone.utc)
 
-        if minutes == 0 and seconds == 0:
-            return f"The task will run every {hours} hour{'s' if hours != 1 else ''}."
+        if next_run <= now:
+            return f"{freq} Next run: immediately."
 
-        if hours == 0:
-            return (
-                f"The task will run every {minutes} minute{'s' if minutes != 1 else ''} "
-                f"and {seconds} second{'s' if seconds != 1 else ''}."
-            )
+        remaining = next_run - now
+        hrs, rem = divmod(int(remaining.total_seconds()), 3600)
+        mins, secs = divmod(rem, 60)
+        pretty_delta = (
+                (f"{hrs} h " if hrs else "")
+                + (f"{mins} m " if mins else "")
+                + (f"{secs} s" if secs or (not hrs and not mins) else "")
+        ).strip()
 
-        if minutes == 0:
-            return (
-                f"The task will run every {hours} hour{'s' if hours != 1 else ''} "
-                f"and {seconds} second{'s' if seconds != 1 else ''}."
-            )
-
-        if seconds == 0:
-            return (
-                f"The task will run every {hours} hour{'s' if hours != 1 else ''} "
-                f"and {minutes} minute{'s' if minutes != 1 else ''}."
-            )
-
-        return (
-            f"The task will run every {hours} hour{'s' if hours != 1 else ''}, "
-            f"{minutes} minute{'s' if minutes != 1 else ''}, and "
-            f"{seconds} second{'s' if seconds != 1 else ''}."
-        )
+        next_iso = next_run.strftime("%Y‑%m‑%d %H:%M:%S UTC")
+        return f"{freq} Next run at {next_iso} (in {pretty_delta})."
 
     def add_tasks(self, task_name: str) -> None:
         """
-        Adds a scheduled task by name if it exists in the task configuration.
+        Adds a scheduled task by name, honouring the new
+        `last_ran_at` field so a task is not re‑run sooner than
+        its interval after a restart.
 
         Args:
             task_name (str): The name of the task to schedule.
         """
+        # ------------------------------------------------------------
+        # 1. Look up the task definition
+        # ------------------------------------------------------------
         task_list = self._task_list()
         if not task_list or task_name not in task_list:
             self.logging.error(f"Task {task_name} not found in task list.")
             return
 
         task_info = task_list[task_name]
-        file_name = task_info.get("file_name")
-        class_name = task_info.get("class_name")
-        seconds = task_info.get("seconds", 0)
-        minutes = task_info.get("minutes", 0)
-        hours = task_info.get("hours", 0)
-        enabled = task_info.get("enabled", True)
+        file_name   = task_info.get("file_name")
+        class_name  = task_info.get("class_name")
+        seconds     = task_info.get("seconds", 0)
+        minutes     = task_info.get("minutes", 0)
+        hours       = task_info.get("hours", 0)
+        enabled     = task_info.get("enabled", True)
 
         if not file_name or not class_name:
             self.logging.error(
@@ -430,6 +446,30 @@ class Bot:
             self.logging.error(f"Task file {file_name} not found at: {full_path}")
             return
 
+        # ------------------------------------------------------------
+        # 2. Compute delay based on last_ran_at  (if any)
+        # ------------------------------------------------------------
+        interval = hours * 3600 + minutes * 60 + seconds
+        remaining_delay = 0
+
+        if interval and enabled:
+            last_ran_raw = task_info.get("last_ran_at")
+            if last_ran_raw:
+                try:
+                    from datetime import datetime, timezone
+                    last_ran = datetime.fromisoformat(
+                        last_ran_raw.replace("Z", "+00:00")
+                    )
+                    elapsed = (datetime.now(timezone.utc) - last_ran).total_seconds()
+                    remaining_delay = max(0, interval - elapsed)
+                except Exception as e:
+                    self.logging.warning(
+                        f"Task {task_name}: invalid last_ran_at – {e}"
+                    )
+
+        # ------------------------------------------------------------
+        # 3. Register the task loop
+        # ------------------------------------------------------------
         if enabled:
             try:
                 self.logging.success(
@@ -437,25 +477,43 @@ class Bot:
                     f"{self.get_task_schedule_message(hours, minutes, seconds)}"
                 )
 
+                # Import and instantiate task class
                 command_contents = self.path_import(f"tasks/{file_name}")
                 TaskClass = getattr(command_contents, class_name)
                 task_instance = TaskClass(self.bot, self.logging)
 
+                # ----------------------------------------
+                # Per‑run wrapper to update last_ran_at
+                # ----------------------------------------
                 async def task_main():
                     await task_instance.main()
+                    self._update_last_ran(task_name)
 
                 def run_in_thread():
                     asyncio.run(task_main())
 
+                # ----------------------------------------
+                # Actual discord.ext.tasks loop
+                # ----------------------------------------
                 @tasks.loop(hours=hours, minutes=minutes, seconds=seconds)
                 async def task_loop():
                     await asyncio.get_event_loop().run_in_executor(
                         self.executor, run_in_thread
                     )
 
+                # ----------------------------------------
+                # Start the loop after on_ready
+                # honouring any remaining delay
+                # ----------------------------------------
                 @self.bot.listen()
                 async def on_ready():
                     if not task_loop.is_running():
+                        if remaining_delay:
+                            self.logging.info(
+                                f"Task {task_name}: delaying first run "
+                                f"by {int(remaining_delay)} s (restart cooldown)."
+                            )
+                            await asyncio.sleep(remaining_delay)
                         task_loop.start()
 
                 self.tasks[task_name] = task_loop
@@ -464,6 +522,34 @@ class Bot:
                 self.logging.error(f"Task {task_name} error: {e}")
         else:
             self.logging.warning(f"Skipped Task: {task_name} as it is disabled.")
+
+    # ------------------------------------------------------------------
+    # Helper to persist last_ran_at into config/tasks.json
+    # ------------------------------------------------------------------
+    def _update_last_ran(self, task_name: str) -> None:
+        """Update (or create) the last_ran_at timestamp for a task."""
+        try:
+            from datetime import datetime, timezone
+
+            tasks_cfg_path = from_root("config/tasks.json")
+            with open(tasks_cfg_path, "r") as f:
+                data = json.load(f)
+
+            if "tasks" not in data or task_name not in data["tasks"]:
+                # Nothing to do – config changed or task removed
+                return
+
+            ts = datetime.now(timezone.utc).isoformat()
+            data["tasks"][task_name]["last_ran_at"] = ts
+
+            # Atomic-ish write: dump to temp then replace
+            tmp_path = tasks_cfg_path + ".tmp"
+            with open(tmp_path, "w") as f:
+                json.dump(data, f, indent=2)
+            path.replace(tmp_path, tasks_cfg_path)
+
+        except Exception as e:
+            self.logging.warning(f"Task {task_name}: can't save last_ran_at – {e}")
 
     def shutdown_executor(self) -> None:
         """
@@ -778,7 +864,7 @@ class Bot:
             await self.bot.process_commands(message)
 
         # Retrieve command detail from config
-        command_list = self._command_list()
+        command_list = self.parsed_command_list()
         if command_name not in command_list:
             self.logging.info(f"'{command_name}' not found in the commands config.")
             return
