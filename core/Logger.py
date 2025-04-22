@@ -18,14 +18,28 @@ logging.addLevelName(SUCCESS_LEVEL_NUM, "SUCCESS")
 
 
 def success(self, message, *args, **kwargs):
+    """
+    Custom log level method for logging 'SUCCESS' messages.
+
+    Parameters:
+    - message (str): The success message to log.
+    - *args: Variable arguments passed to the logging function.
+    - **kwargs: Keyword arguments passed to the logging function.
+    """
     if self.isEnabledFor(SUCCESS_LEVEL_NUM):
         self._log(SUCCESS_LEVEL_NUM, message, args, **kwargs)
 
 
-logging.Logger.success = success
+logging.Logger.success = (
+    success  # Extend the standard Logger with the 'success' method.
+)
 
 
 class CustomLoggingFormatter(logging.Formatter):
+    """
+    Custom formatter for log messages that adds ANSI color coding based on log level.
+    """
+
     LEVEL_COLORS = {
         logging.DEBUG: CYAN,
         logging.INFO: BLUE,
@@ -36,12 +50,32 @@ class CustomLoggingFormatter(logging.Formatter):
     }
 
     def format(self, record):
+        """
+        Format the log record with color based on the log level.
+
+        Parameters:
+        - record (LogRecord): The log record.
+
+        Returns:
+        - str: The formatted, colorized log message.
+        """
         log_color = self.LEVEL_COLORS.get(record.levelno, WHITE)
         message = super().format(record)
         return f"{log_color}{message}{RESET}"
 
 
 class Logger:
+    """
+    Logger sets up and provides a configured logger instance with custom formatting and optional file logging.
+
+    WARNING:
+        This is core logging infrastructure.
+        **Do NOT modify this class or its related functions.**
+        Changes can impact logging across the entire application, including log levels, formatting, and file outputs.
+
+        If you need to customize logging behavior, create a separate wrapper or extend this class carefully.
+    """
+
     def __init__(
         self,
         name: str,
@@ -53,9 +87,8 @@ class Logger:
 
         Parameters:
         - name (str): The name of the logger, typically `__name__`.
-        - brand (str): A prefixed segment of text, typically: eg: EMAG-CSV-PRODUCER.
         - dump_logs (bool): If True, logs will also be saved to a file.
-        - log_file (str): The name of the file where logs will be saved if dump_logs is True.
+        - log_file_path (str): The path to the file where logs will be saved if dump_logs is True.
         """
         self.logger = logging.getLogger(name)
         self.logger.setLevel(logging.DEBUG)

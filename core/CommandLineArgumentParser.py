@@ -5,6 +5,9 @@ from from_root import from_root
 
 # This file has been improved
 # and refactored by GPT 4o
+
+
+# DO NOT MODIFY THIS UNLESS YOU KNOW WHAT YOU ARE DOING!!!!
 class CommandLineArgumentParser:
     """
     A class to parse command-line arguments from Discord-style input strings

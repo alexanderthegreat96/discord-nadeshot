@@ -25,4 +25,3 @@ if tasks:
     for task in tasks:
         system.add_tasks(task)
 system.run_bot()
-                      

@@ -33,18 +33,45 @@ DISCORD_COLOR_MAP = {
 
 
 class EmbedFactory:
+    """
+    EmbedFactory provides utility methods for creating Discord embed payloads.
+
+    This class simplifies the process of:
+    - Creating raw dictionaries (JSON-like) for embeds.
+    - Serializing those dictionaries to JSON strings.
+    - Reconstructing discord.Embed objects from those dictionaries.
+
+    WARNING:
+        **Do NOT modify this class.**
+        This is core functionality for formatting and sending embed messages in Discord.
+        Changes here can break how embeds are constructed, sent, or interpreted across the bot.
+
+        If you need custom behavior, use the provided methods or
+        handle additional formatting externally without altering this module.
+    """
+
     @staticmethod
     def create_embed_json(
         title: str = None,
         description: str = None,
         url: str = None,
-        color: Union[int, str] = None,  # can be an int or a named color
+        color: Union[int, str] = None,
         fields: List[Dict] = None,
         footer: Union[str, Dict, None] = None,
     ) -> dict:
         """
-        Generate a dictionary (JSON-like) that contains all
-        the necessary data to build a Discord embed later.
+        Generate a dictionary representing the structure of a Discord embed.
+
+        Args:
+            title (str, optional): The title of the embed.
+            description (str, optional): The description content.
+            url (str, optional): The URL linked in the embed title.
+            color (Union[int, str], optional): The color of the embed (int or color name).
+            fields (List[Dict], optional): List of fields (each with name, value, inline).
+            footer (Union[str, Dict, None], optional): Footer text or dict with 'text' and optional 'icon_url'.
+
+        Returns:
+            dict: A JSON-like dictionary suitable for serialization or embed reconstruction.
         """
         if isinstance(footer, str):
             footer = {"text": footer}
@@ -72,9 +99,19 @@ class EmbedFactory:
         indent: int = None,
     ) -> str:
         """
-        Same as create_embed_json, but returns a JSON string instead
-        of a dictionary. You can optionally specify an 'indent' value
-        for pretty-printing.
+        Generate a JSON string representing an embed.
+
+        Args:
+            title (str, optional): The title of the embed.
+            description (str, optional): The description content.
+            url (str, optional): The URL linked in the embed title.
+            color (Union[int, str], optional): The color of the embed.
+            fields (List[Dict], optional): List of embed fields.
+            footer (Union[str, Dict, None], optional): Footer content.
+            indent (int, optional): JSON indentation level for pretty-printing.
+
+        Returns:
+            str: JSON string representation of the embed.
         """
         embed_dict = EmbedFactory.create_embed_json(
             title=title,
@@ -89,8 +126,13 @@ class EmbedFactory:
     @staticmethod
     def create_discord_embed(embed_data: dict) -> discord.Embed:
         """
-        Convert an embed_data dictionary back into a
-        discord.Embed instance.
+        Convert a dictionary into a discord.Embed instance.
+
+        Args:
+            embed_data (dict): A dictionary created by create_embed_json.
+
+        Returns:
+            discord.Embed: The constructed embed object.
         """
         embed = discord.Embed(
             title=embed_data.get("title"),
@@ -119,7 +161,13 @@ class EmbedFactory:
     @staticmethod
     def _resolve_color(color: Union[int, str, None]) -> int:
         """
-        Convert a color argument into an integer (0 if invalid or None).
+        Resolve a color input to its integer value.
+
+        Args:
+            color (Union[int, str, None]): The color as an integer or a named string.
+
+        Returns:
+            int: The integer value of the color, or 0 if not recognized.
         """
         if color is None:
             return 0

@@ -4,6 +4,219 @@ import datetime
 import os
 
 
+class EnvParser:
+    """
+    A class to parse environment configuration from a file and provide access to the configuration variables.
+
+    The `EnvParser` class reads environment variables from a specified file (default is `.env`),
+    parses the file contents, and stores the environment variables in a dictionary. It also
+    provides methods to retrieve values, handle errors, and manage the types of configuration variables.
+
+    DO NOT MODIFY THIS CLASS AS IT IS CRUCIAL FOR THE FUNCTIONALITY OF THE APPLICATION.
+    It is responsible for parsing and managing environment variables, which are essential for
+    the application's configuration. Any changes could lead to unexpected behavior or
+    misconfiguration.
+
+    Attributes:
+    -----------
+    __env_file : str
+        The path to the environment file to be parsed. Defaults to ".env".
+    __env : dict or None
+        A dictionary storing environment variables after parsing, or None if parsing failed.
+    __env_error : str or None
+        An error message if parsing failed, or None if there were no errors.
+    __accepted_types : list
+        A list of accepted types for environment variable conversion, including 'str', 'bool',
+        'float', 'int', 'list', 'tuple', and 'dict'.
+    """
+
+    def __init__(self, env_file_path: str = ".env") -> None:
+        """
+        Initializes the EnvParser instance with the specified environment file path.
+
+        Parameters:
+        -----------
+        env_file_path : str, optional
+            The path to the environment file. Defaults to ".env".
+
+        Attributes:
+        -----------
+        __env_file : str
+            The path to the environment file.
+        __env : None
+            Initially set to None; will be populated with parsed environment variables.
+        __env_error : None
+            Initially set to None; will be populated with an error message if parsing fails.
+        __accepted_types : list
+            List of accepted types for conversion.
+        """
+        self.__env_file = env_file_path
+        self.__env = None
+        self.__env_error = None
+
+        self.__parse()
+
+        self.__accepted_types = [
+            "str",
+            "string",
+            "bool",
+            "boolean",
+            "float",
+            "int",
+            "integer",
+            "list",
+            "array",
+            "tuple",
+            "dict",
+            "map",
+        ]
+
+    def __parse(self) -> None:
+        """
+        Parses the environment file and initializes environment variables and error state.
+
+        This method reads the environment file specified by `self.__env_file`, uses the
+        `parse_env_file` function to parse its contents, and sets `self.__env` and
+        `self.__env_error` based on the parsing result.
+        """
+        contents: dict = parse_env_file(self.__env_file)
+        if not contents["status"]:
+            self.__env_error = contents["error"]
+        else:
+            self.__env = contents["env"]
+
+    def get_error(self) -> any:
+        """
+        Returns the error message if the environment file parsing failed.
+
+        Returns:
+        --------
+        any
+            The error message if parsing failed; otherwise, None.
+        """
+        return self.__env_error
+
+    def get_vars(self) -> dict:
+        """
+        Retrieves all environment variables from the internal environment dictionary and converts their values.
+
+        This function returns a dictionary containing all environment variables from the internal
+        environment (`self.__env`). It converts each value using the `convert_input_to_type` function.
+        This conversion ensures that the values are in their appropriate types as determined by the
+        conversion logic.
+
+        Returns:
+        --------
+        dict
+            A dictionary where each key is an environment variable name and each value is the converted
+            value of that environment variable. If `self.__env_error` is `True` or if there are no
+            environment variables, an empty dictionary is returned.
+
+        Notes:
+        ------
+        - If `self.__env_error` is `True`, indicating an error with the environment configuration,
+          the function will return an empty dictionary.
+        - The function iterates over all key-value pairs in `self.__env` and applies `convert_input_to_type`
+          to each value to convert it to the appropriate type.
+        - If `self.__env` is empty, an empty dictionary is returned.
+
+        Examples:
+        ---------
+        >>> self.get_vars()
+        {'DATABASE_URL': 'postgres://user:password@localhost/dbname',
+         'DEBUG_MODE': True,
+         'MAX_CONNECTIONS': 10}
+        """
+        env: dict = {}
+        if not self.__env_error and len(self.__env) > 0:
+            for key, value in self.__env.items():
+                env[key] = convert_input_to_type(value)
+
+        return env
+
+    def get(self, which: str, kind: str = None, default: any = None) -> any:
+        """
+        Retrieves a value from the environment configuration and converts it to the desired type.
+
+        This function fetches a value from the internal environment dictionary (`self.__env`),
+        which holds configuration variables. If the key (`which`) exists in the environment,
+        the function attempts to retrieve it and convert it to the specified `kind`. If the
+        key does not exist, it returns the provided `default` value.
+
+        The function uses the `convert_to_specific_type` helper to handle type conversion for
+        allowed types such as `str`, `int`, `float`, `bool`, `list`, etc.
+
+        Parameters:
+        -----------
+        which : str
+            The key to look up in the environment dictionary. This is the name of the configuration
+            variable you want to retrieve.
+
+        kind : str, optional
+            A string representing the type to convert the value to. Defaults to None.
+            If not provided, it will figure out the type automatically
+            Accepted types include:
+            - 'str', 'string'
+            - 'bool', 'boolean'
+            - 'float'
+            - 'int', 'integer'
+            - 'list', 'array'
+            - 'tuple'
+            - 'dict', 'map'
+
+        default : any, optional
+            The value to return if the key is not found in the environment dictionary. Defaults to `None`.
+
+        Returns:
+        --------
+        any
+            The value retrieved from the environment, converted to the specified `kind` if found,
+            or the `default` value if the key doesn't exist. If the type conversion fails, `None`
+            is returned.
+
+        Notes:
+        ------
+        - If `self.__env_error` is `True`, indicating a problem with the environment configuration,
+          the function will return `None`.
+        - The function first checks if the key exists in the environment. If not found, it falls
+          back to the `default` value.
+        - If `kind` is specified and is in `self.__accepted_types`, the function converts the value
+          using `convert_to_specific_type()`.
+        - If the value cannot be found or the conversion fails, `None` is returned.
+
+        Examples:
+        ---------
+        >>> self.get("DATABASE_URL")
+        'postgres://user:password@localhost/dbname'
+
+        >>> self.get("DEBUG_MODE", kind="bool")
+        True
+
+        >>> self.get("MAX_CONNECTIONS", kind="int", default=10)
+        10
+
+        >>> self.get("NON_EXISTENT_KEY", default="default_value")
+        'default_value'
+        """
+        returned_value: any = None
+        if not self.__env_error:
+            found_value: any = None
+            if which in self.__env:
+                found_value = self.__env[which]
+            else:
+                found_value = default
+
+            if kind and kind in self.__accepted_types:
+                returned_value = (
+                    convert_to_specific_type(found_value, kind) if found_value else None
+                )
+            else:
+                returned_value: any = (
+                    convert_input_to_type(found_value) if found_value else None
+                )
+        return returned_value
+
+
 def is_json(myjson: any) -> bool:
     """Check if a string is a valid JSON."""
     myjson = str(myjson)
@@ -252,211 +465,3 @@ def convert_to_specific_type(what: any, type: str):
                 if is_tuple(what):
                     result = eval(what)
     return result
-
-
-class EnvParser:
-    """
-    A class to parse environment configuration from a file and provide access to the configuration variables.
-
-    The `EnvParser` class reads environment variables from a specified file (default is `.env`),
-    parses the file contents, and stores the environment variables in a dictionary. It also
-    provides methods to retrieve values, handle errors, and manage the types of configuration variables.
-
-    Attributes:
-    -----------
-    __env_file : str
-        The path to the environment file to be parsed. Defaults to ".env".
-    __env : dict or None
-        A dictionary storing environment variables after parsing, or None if parsing failed.
-    __env_error : str or None
-        An error message if parsing failed, or None if there were no errors.
-    __accepted_types : list
-        A list of accepted types for environment variable conversion, including 'str', 'bool',
-        'float', 'int', 'list', 'tuple', and 'dict'.
-    """
-
-    def __init__(self, env_file_path: str = ".env") -> None:
-        """
-        Initializes the EnvParser instance with the specified environment file path.
-
-        Parameters:
-        -----------
-        env_file_path : str, optional
-            The path to the environment file. Defaults to ".env".
-
-        Attributes:
-        -----------
-        __env_file : str
-            The path to the environment file.
-        __env : None
-            Initially set to None; will be populated with parsed environment variables.
-        __env_error : None
-            Initially set to None; will be populated with an error message if parsing fails.
-        __accepted_types : list
-            List of accepted types for conversion.
-        """
-        self.__env_file = env_file_path
-        self.__env = None
-        self.__env_error = None
-
-        self.__parse()
-
-        self.__accepted_types = [
-            "str",
-            "string",
-            "bool",
-            "boolean",
-            "float",
-            "int",
-            "integer",
-            "list",
-            "array",
-            "tuple",
-            "dict",
-            "map",
-        ]
-
-    def __parse(self) -> None:
-        """
-        Parses the environment file and initializes environment variables and error state.
-
-        This method reads the environment file specified by `self.__env_file`, uses the
-        `parse_env_file` function to parse its contents, and sets `self.__env` and
-        `self.__env_error` based on the parsing result.
-        """
-        contents: dict = parse_env_file(self.__env_file)
-        if not contents["status"]:
-            self.__env_error = contents["error"]
-        else:
-            self.__env = contents["env"]
-
-    def get_error(self) -> any:
-        """
-        Returns the error message if the environment file parsing failed.
-
-        Returns:
-        --------
-        any
-            The error message if parsing failed; otherwise, None.
-        """
-        return self.__env_error
-
-    def get_vars(self) -> dict:
-        """
-        Retrieves all environment variables from the internal environment dictionary and converts their values.
-
-        This function returns a dictionary containing all environment variables from the internal
-        environment (`self.__env`). It converts each value using the `convert_input_to_type` function.
-        This conversion ensures that the values are in their appropriate types as determined by the
-        conversion logic.
-
-        Returns:
-        --------
-        dict
-            A dictionary where each key is an environment variable name and each value is the converted
-            value of that environment variable. If `self.__env_error` is `True` or if there are no
-            environment variables, an empty dictionary is returned.
-
-        Notes:
-        ------
-        - If `self.__env_error` is `True`, indicating an error with the environment configuration,
-          the function will return an empty dictionary.
-        - The function iterates over all key-value pairs in `self.__env` and applies `convert_input_to_type`
-          to each value to convert it to the appropriate type.
-        - If `self.__env` is empty, an empty dictionary is returned.
-
-        Examples:
-        ---------
-        >>> self.get_vars()
-        {'DATABASE_URL': 'postgres://user:password@localhost/dbname',
-         'DEBUG_MODE': True,
-         'MAX_CONNECTIONS': 10}
-        """
-        env: dict = {}
-        if not self.__env_error and len(self.__env) > 0:
-            for key, value in self.__env.items():
-                env[key] = convert_input_to_type(value)
-
-        return env
-
-    def get(self, which: str, kind: str = None, default: any = None) -> any:
-        """
-        Retrieves a value from the environment configuration and converts it to the desired type.
-
-        This function fetches a value from the internal environment dictionary (`self.__env`),
-        which holds configuration variables. If the key (`which`) exists in the environment,
-        the function attempts to retrieve it and convert it to the specified `kind`. If the
-        key does not exist, it returns the provided `default` value.
-
-        The function uses the `convert_to_specific_type` helper to handle type conversion for
-        allowed types such as `str`, `int`, `float`, `bool`, `list`, etc.
-
-        Parameters:
-        -----------
-        which : str
-            The key to look up in the environment dictionary. This is the name of the configuration
-            variable you want to retrieve.
-
-        kind : str, optional
-            A string representing the type to convert the value to. Defaults to None.
-            If not provided, it will figure out the type automatically
-            Accepted types include:
-            - 'str', 'string'
-            - 'bool', 'boolean'
-            - 'float'
-            - 'int', 'integer'
-            - 'list', 'array'
-            - 'tuple'
-            - 'dict', 'map'
-
-        default : any, optional
-            The value to return if the key is not found in the environment dictionary. Defaults to `None`.
-
-        Returns:
-        --------
-        any
-            The value retrieved from the environment, converted to the specified `kind` if found,
-            or the `default` value if the key doesn't exist. If the type conversion fails, `None`
-            is returned.
-
-        Notes:
-        ------
-        - If `self.__env_error` is `True`, indicating a problem with the environment configuration,
-          the function will return `None`.
-        - The function first checks if the key exists in the environment. If not found, it falls
-          back to the `default` value.
-        - If `kind` is specified and is in `self.__accepted_types`, the function converts the value
-          using `convert_to_specific_type()`.
-        - If the value cannot be found or the conversion fails, `None` is returned.
-
-        Examples:
-        ---------
-        >>> self.get("DATABASE_URL")
-        'postgres://user:password@localhost/dbname'
-
-        >>> self.get("DEBUG_MODE", kind="bool")
-        True
-
-        >>> self.get("MAX_CONNECTIONS", kind="int", default=10)
-        10
-
-        >>> self.get("NON_EXISTENT_KEY", default="default_value")
-        'default_value'
-        """
-        returned_value: any = None
-        if not self.__env_error:
-            found_value: any = None
-            if which in self.__env:
-                found_value = self.__env[which]
-            else:
-                found_value = default
-
-            if kind and kind in self.__accepted_types:
-                returned_value = (
-                    convert_to_specific_type(found_value, kind) if found_value else None
-                )
-            else:
-                returned_value: any = (
-                    convert_input_to_type(found_value) if found_value else None
-                )
-        return returned_value

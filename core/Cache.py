@@ -9,8 +9,25 @@ logging = Logger("Redis-Cache").get_logger()
 
 
 class Cache:
+    """
+    Cache handles Redis-based caching, queue management, and data persistence.
+
+    WARNING:
+        This class provides core caching infrastructure for the application.
+        **Do NOT modify this class unless you know exactly what you're doing.**
+        Changes here can impact data consistency, queue processing, or break Redis connections.
+
+        If you need additional caching behavior, consider extending this class
+        or interacting with it through its public methods.
+    """
+
     def __init__(self, global_cache_key: str = None):
-        # Parse environment variables
+        """
+        Initializes the Cache instance, sets up Redis connection and global cache key.
+
+        Args:
+            global_cache_key (str, optional): Custom global cache key prefix. Defaults to value from .env.
+        """
         env = EnvParser(from_root(".env"))
         self.__host: str = env.get(which="REDIS_HOST", default="nadeshot-redis")
         self.__port: int = env.get(which="REDIS_PORT", default=6379)
@@ -19,18 +36,23 @@ class Cache:
             which="REDIS_GLOBAL_CACHE_KEY", default="nadeshot-bot"
         )
 
-        # Set global cache key
-        self.__global_cache_key: str = None
         if not global_cache_key:
-            self.__global_cache_key = f"{self.__cache_key}:"
+            self.__global_cache_key: str = f"{self.__cache_key}:"
         else:
-            self.__global_cache_key = f"{global_cache_key}:" or "test-cache-key"
+            self.__global_cache_key: str = f"{global_cache_key}:" or "test-cache-key"
 
-        # Establish Redis connection
         self.__redis = self.connect()
 
     def connect(self, timeout: int = 1) -> Redis:
-        """Connect to Redis and return the client instance."""
+        """
+        Connect to Redis and return the client instance.
+
+        Args:
+            timeout (int): Timeout for the Redis socket connection in seconds.
+
+        Returns:
+            Redis: Redis client instance.
+        """
         try:
             return Redis(
                 host=self.__host,
@@ -44,7 +66,16 @@ class Cache:
             raise
 
     def reconnect(self, retries: int = 3, delay: int = 2) -> Redis:
-        """Try to reconnect to Redis with retries and delays."""
+        """
+        Attempt to reconnect to Redis with retries and delays.
+
+        Args:
+            retries (int): Number of retry attempts.
+            delay (int): Delay between attempts in seconds.
+
+        Returns:
+            Redis: Redis client instance after successful reconnection.
+        """
         for attempt in range(1, retries + 1):
             try:
                 logging.info(
@@ -54,7 +85,7 @@ class Cache:
             except ConnectionError as e:
                 logging.error(f"Reconnect attempt {attempt} failed: {e}")
                 if attempt < retries:
-                    time.sleep(delay)  # Wait before retrying
+                    time.sleep(delay)
                 else:
                     logging.error(
                         f"Failed to reconnect to Redis after {retries} attempts."
@@ -63,25 +94,43 @@ class Cache:
         return None
 
     def _execute_with_reconnect(self, func, *args, retries=3, **kwargs):
-        """Helper function to handle reconnection and re-execution of Redis operations."""
+        """
+        Helper method to execute a Redis operation with automatic reconnection on failure.
+
+        Args:
+            func: The Redis operation function to execute.
+            *args: Positional arguments for the function.
+            retries (int): Number of retry attempts.
+            **kwargs: Keyword arguments for the function.
+
+        Returns:
+            The result of the Redis operation.
+        """
         for attempt in range(1, retries + 1):
             try:
-                # Try to execute the function
                 return func(*args, **kwargs)
             except ConnectionError as e:
                 logging.error(f"Redis connection failed during operation: {e}")
                 if attempt < retries:
-                    # Try to reconnect and re-execute the function
                     logging.info(
                         f"Attempting to reconnect and retry operation (attempt {attempt}/{retries})..."
                     )
-                    self.__redis = self.reconnect()  # Reconnect Redis
+                    self.__redis = self.reconnect()
                 else:
                     logging.error("Max retries reached. Failing operation.")
                     raise
 
     def get_data(self, key: str, expiration_in_seconds: int = 60) -> dict:
-        """Get data from Redis for a specific key."""
+        """
+        Retrieve cached data from Redis.
+
+        Args:
+            key (str): The key to retrieve data for.
+            expiration_in_seconds (int): Expiration for caching logic context.
+
+        Returns:
+            dict: Result status, key, data or error.
+        """
         if not key:
             return {"status": False, "error": "No cache key provided."}
 
@@ -89,7 +138,6 @@ class Cache:
             full_key = self.__global_cache_key + key
 
             def _get_data():
-                """Inner function to retrieve data from Redis."""
                 cached_data = self.__redis.get(full_key)
                 if cached_data:
                     return {
@@ -111,14 +159,23 @@ class Cache:
             return {"status": False, "error": f"Something happened: {e}"}
 
     def set_data(self, key: str, data: str, expiration_in_seconds: int = 60) -> dict:
-        """Set data in Redis with a specific key and expiration time."""
+        """
+        Set data in Redis cache with an expiration.
+
+        Args:
+            key (str): Cache key.
+            data (str): Data to store.
+            expiration_in_seconds (int): Expiration time.
+
+        Returns:
+            dict: Result status, key, and data confirmation or error.
+        """
         if not key:
             return {"status": False, "error": "No cache key provided."}
         try:
             full_key = self.__global_cache_key + key
 
             def _set_data():
-                """Inner function to set data in Redis."""
                 self.__redis.set(full_key, data, ex=expiration_in_seconds)
                 return {
                     "status": True,
@@ -132,7 +189,15 @@ class Cache:
             return {"status": False, "error": f"Something happened: {e}"}
 
     def reset_data(self, key: str) -> dict:
-        """Delete cached data for a specific key."""
+        """
+        Delete a specific cached key.
+
+        Args:
+            key (str): Cache key to delete.
+
+        Returns:
+            dict: Result status or error.
+        """
         if not key:
             return {"status": False, "error": "No cache key provided."}
 
@@ -143,7 +208,6 @@ class Cache:
             if existing_data["status"]:
 
                 def _reset_data():
-                    """Inner function to delete data in Redis."""
                     self.__redis.delete(full_key)
                     return {"status": True}
 
@@ -154,12 +218,20 @@ class Cache:
             return {"status": False, "error": f"Something happened: {e}"}
 
     def enqueue_item(self, queue_name: str, item: str) -> dict:
-        """Enqueue a generic item into the Redis queue (List)."""
+        """
+        Enqueue an item into a Redis list (queue).
+
+        Args:
+            queue_name (str): Name of the queue.
+            item (str): Item to enqueue.
+
+        Returns:
+            dict: Result status or error.
+        """
         try:
             full_queue_name = self.__global_cache_key + queue_name
 
             def _enqueue_item():
-                """Inner function to enqueue the item into the Redis queue."""
                 self.__redis.lpush(full_queue_name, item)
                 return {"status": True, "queue": full_queue_name, "item": item}
 
@@ -168,13 +240,22 @@ class Cache:
             return {"status": False, "error": f"Error enqueuing item: {e}"}
 
     def enqueue_item_unique(self, queue_name: str, item: str, item_id: str) -> dict:
-        """Enqueue a generic item into the Redis queue (List) while preventing duplicates."""
+        """
+        Enqueue an item into a Redis queue while ensuring uniqueness.
+
+        Args:
+            queue_name (str): Queue name.
+            item (str): Item to enqueue.
+            item_id (str): Unique ID for item tracking.
+
+        Returns:
+            dict: Result status or error.
+        """
         try:
             full_queue_name = self.__global_cache_key + queue_name
             unique_set_name = full_queue_name + "_set"
 
             def _enqueue_item():
-                """Inner function to enqueue the item into the Redis queue."""
                 if not self.__redis.sismember(unique_set_name, item_id):
                     self.__redis.lpush(full_queue_name, item)
                     self.__redis.sadd(unique_set_name, item_id)
@@ -187,12 +268,20 @@ class Cache:
             return {"status": False, "error": f"Error enqueuing item: {e}"}
 
     def dequeue_item(self, queue_name: str, timeout: int = 0) -> dict:
-        """Dequeue a generic item from the Redis queue (List)."""
+        """
+        Dequeue an item from the Redis queue.
+
+        Args:
+            queue_name (str): Queue name.
+            timeout (int): Timeout for blocking pop.
+
+        Returns:
+            dict: Result status and dequeued item or error.
+        """
         try:
             full_queue_name = self.__global_cache_key + queue_name
 
             def _dequeue_item():
-                """Inner function to dequeue the item from the Redis queue."""
                 item = self.__redis.brpop(full_queue_name, timeout=timeout)
                 if item:
                     return {
@@ -215,13 +304,13 @@ class Cache:
         self, queue_name: str, process_func, is_unique: bool = False, timeout: int = 0
     ):
         """
-        Continuously dequeue items and process them using the provided function.
-        After all items are processed, clear the unique tracking set associated with the queue.
+        Continuously process items from a Redis queue using the given processing function.
 
-        :param queue_name: Name of the Redis queue.
-        :param process_func: Function to process each dequeued item.
-        :param is_unique: Will attempt to wipe any queue sets if they are found
-        :param timeout: Timeout for the dequeue operation in seconds.
+        Args:
+            queue_name (str): Name of the queue.
+            process_func: Function to process each dequeued item.
+            is_unique (bool): Whether to clear the unique set after processing.
+            timeout (int): Timeout for dequeue operation.
         """
         full_queue_name = self.__global_cache_key + queue_name
         unique_set_name = full_queue_name + "_set"
@@ -242,7 +331,6 @@ class Cache:
             try:
 
                 def _clear_set():
-                    """Inner function to clear the unique set in Redis."""
                     if self.__redis.type(unique_set_name) == b"set":
                         self.__redis.delete(unique_set_name)
                         return {
@@ -264,8 +352,15 @@ class Cache:
                 logging.error(f"Failed to clear unique set '{unique_set_name}': {e}")
 
     def clear_cache(self, prefix: str = None) -> dict:
-        """Clear all cached keys in Redis that start with the given prefix."""
+        """
+        Clear all Redis cache keys that match a given prefix.
 
+        Args:
+            prefix (str, optional): Prefix for keys to delete.
+
+        Returns:
+            dict: Result status and message or error.
+        """
         if prefix is None:
             prefix = self.__global_cache_key
         else:
@@ -276,7 +371,6 @@ class Cache:
                 prefix += ":"
 
             def _clear_keys():
-                """Inner function to clear keys matching the prefix."""
                 cursor = 0
                 deleted_keys_count = 0
 

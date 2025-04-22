@@ -7,18 +7,22 @@ class ErrorHandler:
     """
     Handles error processing for a Discord bot, including logging, publishing error logs,
     and saving error details into a database.
+
+    This class is meant to be user-editable. You can extend or modify the logic inside
+    `main()` to suit your bot's specific error handling needs.
     """
 
     def __init__(
         self, ctx: commands.Context, error: str, traceback: str, logger: Logger
     ) -> None:
         """
-        Initialize the error handler with necessary context, error details, and utilities.
+        Initialize the ErrorHandler with necessary context, error details, and logging utilities.
 
-        :param ctx: The Discord commands context.
-        :param error: A string representation of the error.
-        :param traceback: The traceback of the error.
-        :param logger: An instance of Logger for logging error messages.
+        Args:
+            ctx (commands.Context): The Discord commands context where the error occurred.
+            error (str): A string representation of the error.
+            traceback (str): The traceback information of the error.
+            logger (Logger): An instance of Logger for recording error messages.
         """
         self.context: commands.Context = ctx
         self.message: str = self.context.message.content
@@ -30,9 +34,21 @@ class ErrorHandler:
 
     async def main(self) -> None:
         """
-        Main method to handle the error: logs error details, publishes logs to a queue,
-        and attempts to save the error details into a database.
+        Main method to handle the error:
+        - Logs error details.
+        - (Optionally) Publishes logs to a queue or external service.
+        - (Optionally) Saves error details into a database.
+
+        This method can be extended to notify developers, send error reports,
+        or any other custom behavior you require.
+
+        Example:
+            - You can add retry logic.
+            - Send a DM to the bot owner.
+            - Post in a specific Discord channel.
         """
-        # Log the error message and traceback
+        # Basic error logging
         self.logger.error(f"Something happened: {self.message} - {self.error}")
         self.logger.error(f"Error traceback: {self.traceback}")
+
+        # TODO: Extend this method to add more custom error handling logic.

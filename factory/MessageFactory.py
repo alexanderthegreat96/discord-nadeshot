@@ -3,18 +3,37 @@ from typing import Union, Dict
 
 class MessageFactory:
     """
-    A factory class for building message dictionaries that can be sent
-    to Redis (or any queue) and later consumed for direct or channel messages.
+    MessageFactory is a utility class for building structured message payloads.
+
+    These messages are typically sent to Redis (or similar message queues)
+    for asynchronous processing and delivery to Discord users or channels.
+
+    WARNING:
+        **Do NOT modify this class.**
+        This class is a core part of the bot's messaging infrastructure.
+        Any changes could disrupt the ability to send messages properly
+        through the queue system.
+
+        If you need to create custom message structures, use the provided
+        `create_custom_message` method.
+
+    Purpose:
+        - Ensures all messages follow a standard format.
+        - Supports direct messages (DMs), channel messages, and custom types.
+        - Allows serialization and queue-based handling.
     """
 
     @staticmethod
     def create_direct_message(user_id: int, to_send: Union[str, Dict] = None) -> dict:
         """
-        Create a dictionary representing a direct message to a specific user.
+        Create a dictionary representing a direct (private) message to a user.
 
-        :param user_id: The Discord user ID to receive the DM.
-        :param to_send: The actual content to send (string or embed dict).
-        :return: A dictionary that can be serialized and pushed to a queue.
+        Args:
+            user_id (int): The Discord user ID to receive the DM.
+            to_send (Union[str, Dict], optional): The content to send (string or embed dictionary).
+
+        Returns:
+            dict: A structured message dictionary for a direct message.
         """
         message_content = {
             "message_type": "direct_message",
@@ -33,13 +52,16 @@ class MessageFactory:
         user_id: int = 0,
     ) -> dict:
         """
-        Create a dictionary for a message intended for a server channel.
+        Create a dictionary representing a message for a server channel.
 
-        :param server_id: The Discord server (guild) ID.
-        :param channel_id: The Discord channel ID in that server.
-        :param to_send: The actual content to send (string or embed dict).
-        :param user_id: Optionally track a user who triggered this message (0 if irrelevant).
-        :return: A dictionary that can be serialized and pushed to a queue.
+        Args:
+            server_id (int): The Discord server (guild) ID.
+            channel_id (int): The Discord channel ID within the server.
+            to_send (Union[str, Dict], optional): The content to send (string or embed dictionary).
+            user_id (int, optional): User ID associated with the message, if applicable.
+
+        Returns:
+            dict: A structured message dictionary for a server channel message.
         """
         message_content = {
             "message_type": "regular_message",
@@ -59,15 +81,17 @@ class MessageFactory:
         to_send: Union[str, Dict] = None,
     ) -> dict:
         """
-        A more generic method if you have other 'message_type' values
-        or more advanced use cases.
+        Create a custom message dictionary for advanced or non-standard message types.
 
-        :param message_type: Type of the message (e.g. "regular_message", "direct_message", etc.)
-        :param server_id: Optional server (guild) ID.
-        :param channel_id: Optional channel ID.
-        :param user_id: Optional user ID.
-        :param to_send: Content to send (string or embed dict).
-        :return: A dictionary representing a custom message payload.
+        Args:
+            message_type (str): Type of the message (e.g., "regular_message", "direct_message").
+            server_id (int, optional): Server (guild) ID.
+            channel_id (int, optional): Channel ID.
+            user_id (int, optional): User ID.
+            to_send (Union[str, Dict], optional): Content to send (string or embed dictionary).
+
+        Returns:
+            dict: A structured custom message dictionary.
         """
         message_content = {
             "message_type": message_type,

@@ -8,32 +8,27 @@ from functools import wraps
 from typing import Union
 
 
-class Embed:
-    def __init__(self):
-        self.embed = {"title": None, "description": None, "color": None, "fields": []}
-
-    def set_title(self, title: str):
-        self.embed["title"] = title
-        return self
-
-    def set_description(self, description: str):
-        self.embed["description"] = description
-        return self
-
-    def set_color(self, color: int):
-        self.embed["color"] = color
-        return self
-
-    def add_field(self, name: str, value: str, inline: bool = False):
-        field = {"name": name, "value": value, "inline": inline}
-        self.embed["fields"].append(field)
-        return self
-
-    def build(self):
-        return self.embed
-
-
 class DiscordApi:
+    """
+    DiscordApi provides low-level access to Discord's REST API for sending messages,
+    managing users, fetching data, and other bot-related actions.
+
+    WARNING:
+        **Do NOT modify this class.**
+        This is critical infrastructure that interacts directly with Discord's API.
+        Incorrect changes can lead to rate-limit violations, broken bot behavior,
+        or bans from the Discord platform.
+
+        Only extend behavior through safe methods, or contact the core developers
+        for adjustments.
+
+    Features:
+        - Rate-limit aware retry mechanism.
+        - Basic API actions: send messages, embeds, DMs.
+        - Guild management: kick, ban, timeout, fetch members.
+        - Invite management: delete all invites.
+    """
+
     DISCORD_EPOCH = 1420070400000
     MAX_RETRIES = 5
     RETRY_DELAY = 2
@@ -444,3 +439,42 @@ class DiscordApi:
                 "Content-Type": "application/json",
             },
         )
+
+
+class Embed:
+    """
+    Embed is a utility for building Discord embed dictionaries in a fluent interface.
+
+    WARNING:
+        **Do NOT modify this class.**
+        This is used for consistent embed creation across the application.
+
+    Example Usage:
+        embed = Embed().set_title("Hello").set_description("Welcome!").set_color(0x00FF00).build()
+
+    Attributes:
+        embed (dict): The internal dictionary representing the embed structure.
+    """
+
+    def __init__(self):
+        self.embed = {"title": None, "description": None, "color": None, "fields": []}
+
+    def set_title(self, title: str):
+        self.embed["title"] = title
+        return self
+
+    def set_description(self, description: str):
+        self.embed["description"] = description
+        return self
+
+    def set_color(self, color: int):
+        self.embed["color"] = color
+        return self
+
+    def add_field(self, name: str, value: str, inline: bool = False):
+        field = {"name": name, "value": value, "inline": inline}
+        self.embed["fields"].append(field)
+        return self
+
+    def build(self):
+        return self.embed

@@ -5,8 +5,23 @@ from core.EnvParser import EnvParser
 
 
 class MultiBotHandler:
+    """
+    MultiBotHandler manages logic for handling multiple bot variants across different servers.
+
+    WARNING:
+        This class is a critical part of the bot's multi-variant management system.
+        **Do NOT modify this class.** Improper changes can disrupt the bot's ability to
+        correctly handle commands for different bot variants.
+
+        If you need to adapt behavior, do so via configuration in `config/multi-bot.json`,
+        or consult the development team for safe extension points.
+    """
+
     def __init__(self):
-        # Initialize environment and logger
+        """
+        Initializes the MultiBotHandler, sets up environment parsing, logging,
+        and prepares to load multi-bot configurations.
+        """
         env: EnvParser = EnvParser(from_root(".env"))
         self.logger: Logger = Logger("MultiBotHandler").get_logger()
         self.current_bot_variant: str = env.get("BOT_VARIANT", "str", "somebotvalue")
@@ -15,6 +30,13 @@ class MultiBotHandler:
     def retrieve_multi_bot_config(self) -> None:
         """
         Reads and loads the multi-bot configuration from a JSON file.
+
+        Loads the configuration into self.multi_bot_config.
+        Handles file not found, JSON parsing errors, and unexpected exceptions
+        with appropriate logging.
+
+        File Path:
+            config/multi-bot.json
         """
         try:
             with open(from_root("config/multi-bot.json"), "r") as f:
@@ -36,38 +58,38 @@ class MultiBotHandler:
         """
         Determines if the current bot should ignore commands for the specified server.
 
+        This logic is based on the bot variant assigned in the multi-bot configuration.
+        Each server can define a 'primary' bot variant allowed to handle commands,
+        and 'other' variants that should ignore commands.
+
         Args:
             server_id (int): The ID of the server to check.
 
         Returns:
-            bool: True if the current bot should ignore commands, False otherwise.
+            bool:
+                - True if the current bot variant should ignore commands for this server.
+                - False if the bot is allowed to handle commands.
         """
         self.retrieve_multi_bot_config()
 
-        # Check if config and servers are valid
         if not self.multi_bot_config or not self.multi_bot_config.get("servers"):
-            return False
+            return False  # Default to allowing commands if no config is present.
 
         servers: list = self.multi_bot_config["servers"]
 
-        # Iterate through servers in the config
         for server in servers:
             if server.get("server_id") == server_id:
-                # Check for variants configuration
                 bot_variants = server.get("bot-variants", {})
                 primary_variant = bot_variants.get("primary")
                 other_variants = bot_variants.get("others", [])
 
-                # If current bot is the primary variant, allow commands
                 if primary_variant and self.current_bot_variant == primary_variant:
-                    return False
+                    return False  # Current bot is primary, do not ignore commands.
 
-                # If current bot is listed in other variants, ignore commands
                 if self.current_bot_variant in other_variants:
                     self.logger.info(
                         f"Server {server_id}: Current bot variant [{self.current_bot_variant}] is in 'others'. Ignoring commands."
                     )
-                    return True
+                    return True  # Current bot is in 'others', ignore commands.
 
-        # If no matching server or variants are found, allow commands
-        return False
+        return False  # No specific rule found, allow commands.

@@ -1,4 +1,4 @@
-# Discord Nadeshot v2.0.7
+# Discord Nadeshot v2.0.9
 
 **Discord Nadeshot** is a high-performance, modular Discord bot framework built from scratch. It offers powerful features for managing commands, events, and tasks with a flexible architecture, ideal for collaborative development and control over every aspect of your bot’s behavior.
 
@@ -331,6 +331,86 @@ Heres an example of how to structure your `multi-bot.json` file:
 - **`bot-variants.primary`**: Specifies the bot variant designated as the primary handler for commands in the specified server. This bot will actively process commands, ensuring that only one bot responds to user inputs, preventing command overlap. This value is equal to the ENV Value: ```BOT_VARIANT```
 
 - **`bot-variants.others`**: Lists the bot variants present in the server that should not process commands. These bots will remain in the server but will ignore command inputs, allowing for their presence without causing interference or duplicate responses. These values are equal to the ENV Values: ```BOT_VARIANT```
+
+### Project Structure
+
+Below is the directory structure for the Discord Nadeshot project:
+
+```plaintext
+discord-nadeshot/
+├── authorization/
+├── bin/
+├── commands/
+├── config/
+├── core/
+├── events/
+├── factory/
+├── middlewares/
+├── services/
+├── tasks/
+├── utils/
+├── .env_sample
+├── .gitignore
+├── .project-root
+├── Dockerfile
+├── README.md
+├── docker-compose.yml
+├── main.py
+├── requirements.txt
+├── watcher-docker
+├── watcher-linux
+└── watcher.exe
+```
+
+### Directory Breakdown
+
+#### authorization/
+
+Contains classes for user roles and permissions (Admin, Moderator, Root). Defines access control for commands.
+
+#### bin/
+
+Utility scripts like `console.py` for CLI-based operations (e.g., scaffolding new commands).
+
+#### commands/
+
+Holds modular command files. Each file can represent one or more bot commands.
+
+#### config/
+
+Configuration files in JSON:
+
+- `bot.json`: Bot settings (name, prefix, toggles).
+- `staff.json`: Staff user/group definitions.
+- `commands.json`: Available commands and their settings.
+
+#### core/
+
+Essential bot components and classes that glue the application together.
+
+#### events/
+
+Event listeners and handlers for Discord events (message, member join, reactions, etc.).
+
+#### factory/
+
+Factory pattern implementations for creating instances of bot components.
+
+#### middlewares/
+
+Functions that run before/after commands (e.g., validation, logging).
+
+#### services/
+
+Business logic and external API integrations.
+
+#### tasks/
+
+Scheduled background tasks.
+
+#### utils/
+
+Helper functions and utility classes used across the project.
 
 
 ### Finale
