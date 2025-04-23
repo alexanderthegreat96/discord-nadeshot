@@ -10,6 +10,7 @@
 - **Advanced Command Handling**: Includes support for typed arguments and structured command parsing.
 - **Middleware Integration**: Middleware support for adding pre/post-execution logic to commands and tasks.
 - **Authorization System**: Fine-grained authorization control over who can run specific commands.
+- **No-Slash-Commands**: This is intentional, I wanted more control to the user than to discord. Everything is handled by you programatically.
 
 ## Why Use Discord Nadeshot?
 

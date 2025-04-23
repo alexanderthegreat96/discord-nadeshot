@@ -6,8 +6,8 @@
       "hours": 1,
       "minutes": 0,
       "seconds": 0,
-      "last_ran_at": "2023-10-01T12:00:00Z",
-      "enabled": true
+      "enabled": true,
+      "last_ran_at": "2025-04-23T22:12:49.642039+00:00"
     },
     "AnotherTask": {
       "file_name": "another_task.py",
@@ -23,7 +23,8 @@
       "hours": 1,
       "minutes": 0,
       "seconds": 0,
-      "enabled": true
+      "enabled": true,
+      "last_ran_at": "2025-04-23T22:08:27.577492+00:00"
     },
     "TestTask": {
       "file_name": "test_task.py",
@@ -31,7 +32,8 @@
       "hours": 1,
       "minutes": 0,
       "seconds": 0,
-      "enabled": true
+      "enabled": true,
+      "last_ran_at": "2025-04-23T22:08:24.295604+00:00"
     },
     "TestNothing": {
       "file_name": "test_nothing.py",
@@ -39,7 +41,8 @@
       "hours": 1,
       "minutes": 0,
       "seconds": 0,
-      "enabled": true
+      "enabled": true,
+      "last_ran_at": "2025-04-23T22:08:13.992614+00:00"
     }
   }
 }

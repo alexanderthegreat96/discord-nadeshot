@@ -8,6 +8,7 @@ import time
 import re
 import traceback
 import types
+import os
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from os import path
@@ -20,6 +21,7 @@ from typing import (
     Union,
     Iterable,
 )
+from pathlib import Path
 
 # Third-party library imports
 import discord
@@ -91,7 +93,8 @@ class Bot:
 
         # Executor to handle parallel tasks,
         # preventing main event loop performance issues
-        self.executor: ThreadPoolExecutor = ThreadPoolExecutor()
+        # limited to a max of 16 workers
+        self.executor: ThreadPoolExecutor = ThreadPoolExecutor(max_workers=16)
 
         # Response queues handler for channel concurrency control
         self.channel_queues: defaultdict[
@@ -538,8 +541,13 @@ class Bot:
         try:
             from datetime import datetime, timezone
 
-            tasks_cfg_path = from_root("config/tasks.json")
-            with open(tasks_cfg_path, "r") as f:
+            tasks_cfg_path = Path(from_root("config/tasks.json"))
+
+            if not tasks_cfg_path.exists():
+                self.logging.warning(f"Task {task_name}: config file not found at {tasks_cfg_path}")
+                return
+
+            with tasks_cfg_path.open("r") as f:
                 data = json.load(f)
 
             if "tasks" not in data or task_name not in data["tasks"]:
@@ -549,11 +557,11 @@ class Bot:
             ts = datetime.now(timezone.utc).isoformat()
             data["tasks"][task_name]["last_ran_at"] = ts
 
-            # Atomic-ish write: dump to temp then replace
-            tmp_path = tasks_cfg_path + ".tmp"
-            with open(tmp_path, "w") as f:
+            tmp_path = tasks_cfg_path.parent / (tasks_cfg_path.name + ".tmp")
+            with tmp_path.open("w") as f:
                 json.dump(data, f, indent=2)
-            path.replace(tmp_path, tasks_cfg_path)
+
+            os.replace(str(tmp_path), str(tasks_cfg_path))
 
         except Exception as e:
             self.logging.warning(f"Task {task_name}: can't save last_ran_at – {e}")
