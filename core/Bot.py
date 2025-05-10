@@ -9,6 +9,7 @@ import re
 import traceback
 import types
 import os
+from datetime import datetime, timezone
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from os import path
@@ -77,8 +78,11 @@ class Bot:
         # Holds the commands reference from discord.ext
         self.commands = commands
 
-        # Holds references to scheduled tasks
+        # Task loops, restart delays, and start-tracking
         self.tasks: Dict[str, tasks.Loop] = {}
+        self._task_delays: Dict[str, float] = {}
+        self._started_tasks: set[str] = set()
+        self._task_failures: Dict[str, bool] = {}
 
         # Redis connectivity for dealing with caching
         self.cache: Cache = Cache()
@@ -100,6 +104,31 @@ class Bot:
         self.channel_queues: defaultdict[
             int, asyncio.Queue[Callable[[], Coroutine[None, None, None]]]
         ] = defaultdict(asyncio.Queue)
+
+        @self.bot.event
+        async def on_ready():
+            self.logging.success(f"{self.bot_name} connected as {self.bot.user}")
+            for name, loop in self.tasks.items():
+                if name not in self._started_tasks:
+                    delay = self._task_delays.get(name, 0)
+                    if delay > 0:
+                        self.logging.info(
+                            f"Task '{name}' delaying execution by {self.seconds_to_hms(int(delay))}s"
+                        )
+
+                        async def _delayed_start(loop, name, delay):
+                            await asyncio.sleep(delay)
+                            loop.start()
+                            self._started_tasks.add(name)
+
+                        asyncio.create_task(_delayed_start(loop, name, delay))
+                    else:
+                        loop.start()
+                        self._started_tasks.add(name)
+            # start watchdog once
+            if not hasattr(self, "_watchdog_started"):
+                asyncio.create_task(self._watchdog())
+                self._watchdog_started = True
 
     # --------------------------------------------------------------------------
     # Data / Config Loading
@@ -168,6 +197,27 @@ class Bot:
     # --------------------------------------------------------------------------
     # General Utility Methods
     # --------------------------------------------------------------------------
+
+    def seconds_to_hms(self, total_seconds: int) -> str:
+        """
+        Convert seconds to a human-readable format, e.g. "1 hour, 13 minutes and 10 seconds".
+        """
+        hours = total_seconds // 3600
+        remainder = total_seconds % 3600
+        minutes = remainder // 60
+        seconds = remainder % 60
+
+        parts: List[str] = []
+        if hours:
+            parts.append(f"{hours} hour{'s' if hours != 1 else ''}")
+        if minutes:
+            parts.append(f"{minutes} minute{'s' if minutes != 1 else ''}")
+        if seconds or not parts:
+            parts.append(f"{seconds} second{'s' if seconds != 1 else ''}")
+
+        if len(parts) == 1:
+            return parts[0]
+        return ", ".join(parts[:-1]) + " and " + parts[-1]
 
     def array_merge(
         self,
@@ -350,6 +400,49 @@ class Bot:
             return True
         return False
 
+    # ------------- Task Watchdog ----------------
+    async def _watchdog(self) -> None:
+        """
+        Periodically monitors and restarts failed or stopped background tasks.
+
+        This coroutine runs in a loop as long as the bot is running. It checks each
+        registered task in `self.tasks` to determine if it has either:
+        - Stopped unexpectedly (`not loop.is_running()`), or
+        - Been marked as failed (`self._task_failures[name]` is True).
+
+        If a task meets either condition and was previously started, the watchdog will:
+        - Log a warning about the recovery attempt.
+        - Attempt to restart the task using `loop.start()`.
+        - If the restart fails due to a RuntimeError, it logs the error and invokes the
+          `ErrorHandler` to process and report the exception.
+
+        The loop sleeps for 60 seconds between checks to prevent excessive resource use.
+        """
+        # Wait until the bot is fully ready before starting the watchdog loop
+        await self.bot.wait_until_ready()
+
+        while not self.bot.is_closed():
+            for name, loop in self.tasks.items():
+                # Check if the task has previously failed or is no longer running
+                failed = getattr(self, "_task_failures", {}).get(name, False)
+
+                if (name in self._started_tasks and not loop.is_running()) or failed:
+                    self.logging.warning(f"Watchdog recovering task '{name}'")
+                    self._task_failures[name] = False  # Reset the failure flag
+
+                    try:
+                        loop.start()  # Attempt to restart the task
+                        self.logging.info(f"Task '{name}' restarted by watchdog")
+                    except RuntimeError as e:
+                        # Handle task restart failure
+                        self.logging.error(f"Watchdog failed to restart '{name}': {e}")
+                        error_handler = ErrorHandler(
+                            None, str(e), traceback.format_exc(), self.logging
+                        )
+                        await error_handler.main()  # Log/report the exception
+
+            await asyncio.sleep(60)  # Pause before the next check
+
     # --------------------------------------------------------------------------
     # Task Scheduling & Management
     # --------------------------------------------------------------------------
@@ -422,116 +515,100 @@ class Bot:
         return f"{freq} Next run at {next_iso} (in {pretty_delta})."
 
     def add_tasks(self, task_name: str) -> None:
-        """
-        Adds a scheduled task by name, honouring the new
-        `last_ran_at` field so a task is not re‑run sooner than
-        its interval after a restart.
-
-        Args:
-            task_name (str): The name of the task to schedule.
-        """
-        # ------------------------------------------------------------
-        # 1. Look up the task definition
-        # ------------------------------------------------------------
         task_list = self._task_list()
         if not task_list or task_name not in task_list:
-            self.logging.error(f"Task {task_name} not found in task list.")
+            self.logging.error(f"Task '{task_name}' not found.")
             return
-
-        task_info = task_list[task_name]
-        file_name = task_info.get("file_name")
-        class_name = task_info.get("class_name")
-        seconds = task_info.get("seconds", 0)
-        minutes = task_info.get("minutes", 0)
-        hours = task_info.get("hours", 0)
-        enabled = task_info.get("enabled", True)
-
-        if not file_name or not class_name:
-            self.logging.error(
-                f"Task {task_name} error: Missing mandatory 'file_name' or 'class_name'."
-            )
+        info = task_list[task_name]
+        file_name = info.get("file_name")
+        class_name = info.get("class_name")
+        hours, minutes, seconds = (
+            info.get("hours", 0),
+            info.get("minutes", 0),
+            info.get("seconds", 0),
+        )
+        enabled = info.get("enabled", True)
+        if not all([file_name, class_name]):
+            self.logging.error(f"Task '{task_name}' missing file or class.")
             return
-
         full_path = from_root(f"tasks/{file_name}")
         if not path.exists(full_path):
-            self.logging.error(f"Task file {file_name} not found at: {full_path}")
+            self.logging.error(f"Task file missing: {full_path}")
             return
-
-        # ------------------------------------------------------------
-        # 2. Compute delay based on last_ran_at  (if any)
-        # ------------------------------------------------------------
+        # Compute restart cooldown from last_ran_at
         interval = hours * 3600 + minutes * 60 + seconds
-        remaining_delay = 0
-
-        if interval and enabled:
-            last_ran_raw = task_info.get("last_ran_at")
-            if last_ran_raw:
-                try:
-                    from datetime import datetime, timezone
-
-                    last_ran = datetime.fromisoformat(
-                        last_ran_raw.replace("Z", "+00:00")
-                    )
-                    elapsed = (datetime.now(timezone.utc) - last_ran).total_seconds()
-                    remaining_delay = max(0, interval - elapsed)
-                except Exception as e:
-                    self.logging.warning(f"Task {task_name}: invalid last_ran_at – {e}")
-
-        # ------------------------------------------------------------
-        # 3. Register the task loop
-        # ------------------------------------------------------------
-        if enabled:
+        delay = 0
+        last = info.get("last_ran_at")
+        if interval and enabled and last:
             try:
-                self.logging.success(
-                    f"Hooked Task: {task_name}. "
-                    f"{self.get_task_schedule_message(hours, minutes, seconds)}"
-                )
+                last_dt = datetime.fromisoformat(last.replace("Z", "+00:00"))
+                elapsed = (datetime.now(timezone.utc) - last_dt).total_seconds()
+                delay = max(0, interval - elapsed)
+            except Exception:
+                self.logging.warning(f"Task '{task_name}': invalid last_ran_at")
+        # store delay
+        self._task_delays[task_name] = delay
 
-                # Import and instantiate task class
-                command_contents = self.path_import(f"tasks/{file_name}")
-                TaskClass = getattr(command_contents, class_name)
-                task_instance = TaskClass(self.bot, self.logging)
+        if enabled:
+            self.logging.success(
+                f"Hooked Task: {task_name}. "
+                f"{self.get_task_schedule_message(hours, minutes, seconds)}"
+            )
 
-                # ----------------------------------------
-                # Per‑run wrapper to update last_ran_at
-                # ----------------------------------------
-                async def task_main():
-                    await task_instance.main()
-                    self._update_last_ran(task_name)
+            try:
+                # import and instantiate
+                spec = importlib.util.spec_from_file_location(file_name, full_path)
+                module = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(module)  # type: ignore
+                TaskCls = getattr(module, class_name)
+                instance = TaskCls(self.bot, self.logging)
 
-                def run_in_thread():
-                    asyncio.run(task_main())
+                # thread runner
+                def run_thread():
+                    try:
+                        asyncio.run(instance.main())
+                    except Exception as e:
+                        self._task_failures[task_name] = True
+                        self.logging.error(
+                            f"[{task_name}] thread error: {e}. Will be restarted by the watchdog."
+                        )
+                        raise
 
-                # ----------------------------------------
-                # Actual discord.ext.tasks loop
-                # ----------------------------------------
+                # loop with exception handling and last_ran update
                 @tasks.loop(hours=hours, minutes=minutes, seconds=seconds)
                 async def task_loop():
-                    await asyncio.get_event_loop().run_in_executor(
-                        self.executor, run_in_thread
-                    )
+                    try:
+                        await asyncio.get_event_loop().run_in_executor(
+                            self.executor, run_thread
+                        )
+                        self._update_last_ran(task_name)
+                    except Exception as e:
+                        self._task_failures[task_name] = (
+                            True  # somehow crashed so we need to mark it
+                        )
+                        self.logging.error(f"[Task {task_name}] crashed: {e}")
 
-                # ----------------------------------------
-                # Start the loop after on_ready
-                # honouring any remaining delay
-                # ----------------------------------------
-                @self.bot.listen()
-                async def on_ready():
-                    if not task_loop.is_running():
-                        if remaining_delay:
-                            self.logging.info(
-                                f"Task {task_name}: delaying first run "
-                                f"by {int(remaining_delay)} s (restart cooldown)."
-                            )
-                            await asyncio.sleep(remaining_delay)
-                        task_loop.start()
+                        error_handler = ErrorHandler(
+                            None, str(e), traceback.format_exc(), self.logging
+                        )
+                        await error_handler.main()  # Log/report the exception
+                        # not really neede to be honest
+                        # try:
+                        #     task_loop.cancel()
+                        # except Exception as e:
+                        #     self.logging.error(f"Unable to stop the task_loop. Exception: {e}")
+                        #     error_handler = ErrorHandler(
+                        #         None, str(e), traceback.format_exc(), self.logging
+                        #     )
+                        #     await error_handler.main()  # Log/report the exception
 
+                # register loop
+                self._task_failures[task_name] = False  # start successfully
                 self.tasks[task_name] = task_loop
-
             except Exception as e:
-                self.logging.error(f"Task {task_name} error: {e}")
+                self.logging.error(f"Task '{task_name}' registration error: {e}")
         else:
-            self.logging.warning(f"Skipped Task: {task_name} as it is disabled.")
+            self.logging.warning(f"Skipped disabled task '{task_name}'")
 
     # ------------------------------------------------------------------
     # Helper to persist last_ran_at into config/tasks.json
@@ -539,32 +616,42 @@ class Bot:
     def _update_last_ran(self, task_name: str) -> None:
         """Update (or create) the last_ran_at timestamp for a task."""
         try:
-            from datetime import datetime, timezone
-
+            # Load config/tasks.json
             tasks_cfg_path = Path(from_root("config/tasks.json"))
-
             if not tasks_cfg_path.exists():
-                self.logging.warning(f"Task {task_name}: config file not found at {tasks_cfg_path}")
+                self.logging.warning(
+                    f"Task '{task_name}': config file not found at {tasks_cfg_path}"
+                )
                 return
 
             with tasks_cfg_path.open("r") as f:
                 data = json.load(f)
 
+            # Ensure structure
             if "tasks" not in data or task_name not in data["tasks"]:
-                # Nothing to do – config changed or task removed
+                self.logging.warning(
+                    f"Task '{task_name}': no entry in 'tasks' to update"
+                )
                 return
 
+            # Create ISO timestamp in UTC
             ts = datetime.now(timezone.utc).isoformat()
             data["tasks"][task_name]["last_ran_at"] = ts
 
-            tmp_path = tasks_cfg_path.parent / (tasks_cfg_path.name + ".tmp")
+            # Atomic write to temp file
+            tmp_path = tasks_cfg_path.with_name(tasks_cfg_path.name + ".tmp")
             with tmp_path.open("w") as f:
                 json.dump(data, f, indent=2)
-
             os.replace(str(tmp_path), str(tasks_cfg_path))
 
+        except json.JSONDecodeError as e:
+            self.logging.warning(
+                f"Task '{task_name}': invalid JSON in tasks.json – {e}"
+            )
         except Exception as e:
-            self.logging.warning(f"Task {task_name}: can't save last_ran_at – {e}")
+            self.logging.warning(
+                f"Task '{task_name}': failed to save last_ran_at – {e}\n{traceback.format_exc()}"
+            )
 
     def shutdown_executor(self) -> None:
         """

@@ -8,47 +8,56 @@ class ErrorHandler:
     Handles error processing for a Discord bot, including logging, publishing error logs,
     and saving error details into a database.
 
-    This class is meant to be user-editable. You can extend or modify the logic inside
-    `main()` to suit your bot's specific error handling needs.
+    Extend the `main()` method to customize behavior as needed.
     """
 
     def __init__(
-        self, ctx: commands.Context, error: str, traceback: str, logger: Logger
+        self,
+        ctx: commands.Context | None,
+        error: str,
+        traceback: str,
+        logger: Logger,
     ) -> None:
         """
-        Initialize the ErrorHandler with necessary context, error details, and logging utilities.
+        Initialize the ErrorHandler.
 
         Args:
-            ctx (commands.Context): The Discord commands context where the error occurred.
-            error (str): A string representation of the error.
-            traceback (str): The traceback information of the error.
-            logger (Logger): An instance of Logger for recording error messages.
+            ctx (commands.Context | None): The context where the error occurred.
+            error (str): A brief description or message of the error.
+            traceback (str): Detailed traceback string.
+            logger (Logger): Logger instance for recording logs.
         """
-        self.context: commands.Context = ctx
-        self.message: str = self.context.message.content
-        self.error: str = error
-        self.traceback: str = traceback
-        self.logger: Logger = logger
+        self.context = ctx
+        self.error = error
+        self.traceback = traceback
+        self.logger = logger
 
-        self.message_wrapper: MessageWrapper = MessageWrapper(self.context.message)
+        # Extract message content safely
+        self.message = getattr(ctx, "message", None)
+        self.message_content = getattr(self.message, "content", None)
+
+        # Prepare a wrapper only if message exists
+        self.message_wrapper = MessageWrapper(self.message) if self.message else None
 
     async def main(self) -> None:
         """
-        Main method to handle the error:
-        - Logs error details.
-        - (Optionally) Publishes logs to a queue or external service.
-        - (Optionally) Saves error details into a database.
-
-        This method can be extended to notify developers, send error reports,
-        or any other custom behavior you require.
-
-        Example:
-            - You can add retry logic.
-            - Send a DM to the bot owner.
-            - Post in a specific Discord channel.
+        Perform error handling:
+        - Log the error and traceback.
+        - (Optionally) Notify users or developers.
+        - (Optionally) Save to DB or forward to monitoring systems.
         """
-        # Basic error logging
-        self.logger.error(f"Something happened: {self.message} - {self.error}")
-        self.logger.error(f"Error traceback: {self.traceback}")
+        # Compose base message for logging
+        context_info = (
+            f"Command: {self.message_content}"
+            if self.message_content
+            else "No command message available."
+        )
 
-        # TODO: Extend this method to add more custom error handling logic.
+        self.logger.error(f"[ErrorHandler] {context_info}")
+        self.logger.error(f"[ErrorHandler] Error: {self.error}")
+        self.logger.error(f"[ErrorHandler] Traceback:\n{self.traceback}")
+
+        # TODO: Add additional behavior below
+        # - Notify developer via DM or admin channel
+        # - Send message back to user with a generic error note
+        # - Store error in persistent DB
