@@ -719,7 +719,7 @@ Permission is hereby granted, free of charge, to any person obtaining a copy of 
 
 ## Changelog
 
-### v2.0.9
+### v2.1.0
 - Added comprehensive test suite (230+ tests)
 - Implemented Makefile for common development tasks
 - Separated Docker configurations for development and production
