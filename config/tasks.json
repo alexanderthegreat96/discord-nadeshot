@@ -3,11 +3,11 @@
     "TaskSample": {
       "file_name": "task_sample.py",
       "class_name": "TaskSample",
-      "hours": 1,
+      "hours": 0,
       "minutes": 0,
-      "seconds": 0,
+      "seconds": 31,
       "enabled": true,
-      "last_ran_at": "2025-04-23T22:12:49.642039+00:00"
+      "last_ran_at": "2025-05-10T17:33:27.010516+00:00"
     },
     "AnotherTask": {
       "file_name": "another_task.py",
@@ -24,7 +24,7 @@
       "minutes": 0,
       "seconds": 0,
       "enabled": true,
-      "last_ran_at": "2025-04-23T22:08:27.577492+00:00"
+      "last_ran_at": "2025-05-10T17:37:40.228707+00:00"
     },
     "TestTask": {
       "file_name": "test_task.py",
@@ -33,7 +33,7 @@
       "minutes": 0,
       "seconds": 0,
       "enabled": true,
-      "last_ran_at": "2025-04-23T22:08:24.295604+00:00"
+      "last_ran_at": "2025-05-10T17:37:40.225792+00:00"
     },
     "TestNothing": {
       "file_name": "test_nothing.py",
@@ -42,7 +42,7 @@
       "minutes": 0,
       "seconds": 0,
       "enabled": true,
-      "last_ran_at": "2025-04-23T22:08:13.992614+00:00"
+      "last_ran_at": "2025-05-10T17:37:40.230769+00:00"
     }
   }
 }

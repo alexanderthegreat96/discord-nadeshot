@@ -1,54 +1,69 @@
-# Discord Nadeshot v2.0.9
+# Discord Nadeshot v2.1.0
 
-**Discord Nadeshot** is a high-performance, modular Discord bot framework built from scratch. It offers powerful features for managing commands, events, and tasks with a flexible architecture, ideal for collaborative development and control over every aspect of your bot’s behavior.
+**Discord Nadeshot** is a high-performance, modular Discord bot framework built from scratch. It offers powerful features for managing commands, events, and tasks with a flexible architecture, ideal for collaborative development and complete control over every aspect of your bot's behavior.
 
 ## Key Features
 
-- **Object-Oriented Design**: Each command and task is isolated in its own file, promoting clean, modular, and maintainable code.
-- **Asynchronous Multi-Threading**: Supports asynchronous tasks that run at scheduled intervals without impacting performance.
-- **Event-Driven Architecture**: Built-in support for easy-to-use events, making it simple to extend functionality.
-- **Advanced Command Handling**: Includes support for typed arguments and structured command parsing.
-- **Middleware Integration**: Middleware support for adding pre/post-execution logic to commands and tasks.
-- **Authorization System**: Fine-grained authorization control over who can run specific commands.
-- **No-Slash-Commands**: This is intentional, I wanted more control to the user than to discord. Everything is handled by you programatically.
+- **Object-Oriented Design**: Each command and task is isolated in its own file, promoting clean, modular, and maintainable code
+- **Asynchronous Multi-Threading**: Supports asynchronous tasks that run at scheduled intervals without impacting performance
+- **Event-Driven Architecture**: Built-in support for easy-to-use events, making it simple to extend functionality
+- **Advanced Command Handling**: Includes support for typed arguments and structured command parsing
+- **Middleware Integration**: Middleware support for adding pre/post-execution logic to commands and tasks
+- **Authorization System**: Fine-grained authorization control over who can run specific commands
+- **Programmatic Control**: No slash-commands by default—everything is handled programmatically, giving you full control
+- **Multi-Bot Support**: Deploy multiple bot variants in the same environment without conflicts
+- **Task Scheduling**: Built-in task scheduling system with configurable intervals
+- **CLI Generators**: Built-in tools for scaffolding commands, tasks, and middlewares
+- **Comprehensive Testing**: 230+ unit tests with excellent coverage
 
 ## Why Use Discord Nadeshot?
 
-If you're looking for a solution that makes building modular, extensible Discord bots simple, while giving you full control over the architecture and functionality, **Discord Nadeshot** is the framework for you. Say goodbye to constraints imposed by pre-built libraries—this framework gives you complete freedom to design your bot without restrictions.
+If you're looking for a solution that makes building modular, extensible Discord bots simple while giving you full control over the architecture and functionality, **Discord Nadeshot** is the framework for you. Say goodbye to constraints imposed by pre-built libraries—this framework gives you complete freedom to design your bot without restrictions.
 
 ---
 
 ## Getting Started
 
-You can set up **Discord Nadeshot** either by installing it locally or using Docker for a production-like environment. Docker is the recommended option for ease of use and consistent deployment.
+### Prerequisites
 
-### Option 1: Local Installation
+- Python 3.12+
+- pip or conda
+- Docker & Docker Compose (optional but recommended)
+- A Discord Bot Token
+
+### Quick Start: Local Installation
 
 1. Clone the repository:
-    ```bash
-    git clone <repository-url>
-    ```
-2. Install the required dependencies:
-    ```bash
-    pip install -r requirements.txt
-    ```
+   ```bash
+   git clone <repository-url>
+   cd discord-nadeshot
+   ```
+
+2. Create a virtual environment and install dependencies:
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   pip install -r requirements.txt
+   ```
+
 3. Configure your environment:
-    - Modify the `.env` file based on the `.env_sample` template.
+   ```bash
+   cp .env_sample .env
+   # Edit .env and add your Discord bot token and other settings
+   ```
 
-### Option 2: Docker Setup (Recommended)
+4. Run the bot:
+   ```bash
+   python main.py
+   ```
 
-1. Configure your environment:
-    - Modify the `.env` file based on the `.env_sample` template.
-2. Build and run the project using Docker:
-    ```bash
-    docker-compose up --build
-    ```
+For Docker deployment, see the [Docker Deployment](#docker-deployment) section below.
 
 ---
 
 ## Configuration
 
-After setting up, you can further tweak your bot's settings by editing the `config/bot.json` file. Here’s a basic configuration:
+After setup, configure your bot by editing `config/bot.json`:
 
 ```json
 {
@@ -66,81 +81,302 @@ After setting up, you can further tweak your bot's settings by editing the `conf
   }
 }
 ```
+
 ### Configuration Keys Explained
 
-| Key                              | Description                                                      | Example Value                          |
-|----------------------------------|------------------------------------------------------------------|----------------------------------------|
-| **bot-name**                     | The name of the bot as it appears to users.                     | `"Nadeshot"`                           |
-| **bot-listens-to**               | A specific command or keyword the bot listens for as its primary interaction point. | `"/nade"`                              |
-| **bot-description**              | A short description or helper message for users.                | `"Run /nade help for a full list of commands"` |
-| **enable-reset-cooldowns**       | Allows resetting command cooldowns if enabled. Works on par with ```utils/cooldown_immune.py```                 | `true`                                 |
-| **enable-cooldowns**             | Enables cooldowns for commands to prevent spamming.             | `true`                                 |
-| **cooldown-duration**            | Duration of the cooldown (in seconds).                          | `15`                                   |
-| **enable-global-errors**         | Enables global error handling to notify users of issues.        | `true`                                 |
-| **enable-automatic-command-helper** | Automatically provides helper messages for commands.           | `false`                                |
-| **development-mode**             | Enables development mode for debugging and testing.             | `true`                                 |
-| **enable-multiple-bots**         | Allows running multiple instances of the bot.                   | `false`                                |
+| Key | Description | Example |
+|-----|-------------|---------|
+| **bot-name** | The name of the bot as it appears to users | `"Nadeshot"` |
+| **bot-listens-to** | Primary command/keyword the bot listens for | `"/nade"` |
+| **bot-description** | Helper message for users | `"Run /nade help for commands"` |
+| **enable-reset-cooldowns** | Allow resetting command cooldowns | `true` |
+| **enable-cooldowns** | Enable cooldowns to prevent spamming | `true` |
+| **cooldown-duration** | Cooldown duration in seconds | `15` |
+| **enable-global-errors** | Global error handling and notifications | `true` |
+| **enable-automatic-command-helper** | Auto-generate help messages | `false` |
+| **development-mode** | Enable development mode for debugging | `true` |
+| **enable-multiple-bots** | Allow multiple bot instances | `false` |
 
-## Command and Task Generation
-To speed up development, the framework includes a built-in boilerplate generator for both commands and tasks. This allows you to create new features without starting from scratch.
+---
+
+## Makefile Guide
+
+The project includes a comprehensive `Makefile` that simplifies common development tasks.
+
+### Virtual Environment Management
+
+**Setup virtual environment:**
+```bash
+make venv-create
+```
+Creates a Python virtual environment and installs all dependencies.
+
+**Clean virtual environment:**
+```bash
+make venv-clean
+```
+Removes and reinstalls the virtual environment.
+
+### Testing
+
+**Run all tests:**
+```bash
+make test
+```
+Executes the complete test suite (230+ tests).
+
+**Run tests with coverage:**
+```bash
+make test-cov
+```
+Runs tests and generates a detailed coverage report.
+
+**Run unit tests only:**
+```bash
+make test-unit
+```
+Executes unit tests excluding integration tests.
+
+**Run tests in watch mode:**
+```bash
+make test-watch
+```
+Continuously monitors test files and reruns tests on changes.
+
+### Docker - Development
+
+**Build development image:**
+```bash
+make dev-build
+```
+Builds the development Docker image with file watching.
+
+**Start development environment:**
+```bash
+make dev-up
+```
+Starts the bot in development mode with auto-reload.
+
+**Stop development environment:**
+```bash
+make dev-down
+```
+Stops the development container.
+
+### Docker - Production
+
+**Build production image:**
+```bash
+make prod-build
+```
+Builds the optimized production Docker image.
+
+**Start production environment:**
+```bash
+make prod-up
+```
+Starts the bot in production mode.
+
+**Stop production environment:**
+```bash
+make prod-down
+```
+Stops the production container.
+
+### Other Commands
+
+**View all available targets:**
+```bash
+make help
+```
+Displays all available make commands.
+
+**Clean build artifacts:**
+```bash
+make clean
+```
+Removes Docker images, containers, and temporary files.
+
+---
+
+## Docker Deployment
+
+### Development Setup
+
+The development Docker setup includes automatic file watching, so code changes are immediately reflected without restarting.
+
+**Step 1: Configure Environment**
+```bash
+cp .env_sample .env
+# Edit .env with your Discord bot token
+```
+
+**Step 2: Build and Start**
+```bash
+make dev-build
+make dev-up
+```
+
+**Step 3: View Logs**
+```bash
+docker-compose -f docker-compose.dev.yml logs -f
+```
+
+**Step 4: Stop the Bot**
+```bash
+make dev-down
+```
+
+**Benefits:**
+- Automatic code reload on file changes
+- Full source code mounted as volumes
+- Perfect for rapid development and testing
+- Identical to production environment
+
+### Production Setup
+
+The production Docker setup is optimized for performance without file watching overhead.
+
+**Step 1: Configure Environment**
+```bash
+cp .env_sample .env
+# Edit .env with production settings
+```
+
+**Step 2: Build and Start**
+```bash
+make prod-build
+make prod-up
+```
+
+**Step 3: View Logs**
+```bash
+docker-compose -f docker-compose.prod.yml logs -f
+```
+
+**Step 4: Manage the Bot**
+
+View running containers:
+```bash
+docker-compose -f docker-compose.prod.yml ps
+```
+
+Restart the bot:
+```bash
+docker-compose -f docker-compose.prod.yml restart
+```
+
+Stop the bot:
+```bash
+make prod-down
+```
+
+**Benefits:**
+- Optimized image size
+- No file watching overhead
+- Better performance
+- Production-ready
+
+### Docker Compose Files
+
+- **docker-compose.dev.yml**: Development configuration
+  - Uses `Dockerfile.dev` with `watcher-docker` tool
+  - Mounts source code as volumes for live reloading
+  - Best for rapid development
+
+- **docker-compose.prod.yml**: Production configuration
+  - Uses `Dockerfile.prod` for lean image
+  - No file watching
+  - Recommended for deployed bots
+
+### Environment Variables
+
+Set these in your `.env` file:
+
+```bash
+# Discord Bot Configuration
+DISCORD_TOKEN=your_bot_token_here
+BOT_VARIANT=primary  # For multi-bot setups
+
+# Redis Configuration (if using Cache)
+REDIS_HOST=redis
+REDIS_PORT=6379
+
+# Other Settings
+DEVELOPMENT_MODE=true  # Set to false in production
+```
+
+---
+
+## CLI Tools & Code Generation
+
+The framework includes built-in CLI tools for scaffolding commands, tasks, and middlewares, saving you time during development.
 
 ### Command Generation
-To generate a new command:
-```bash 
-py bin/console.py generate-command my-command-name/sub-command-name
-py bin/comsole.py generate-cmmand --name my-new-command/some-sub-command --prefix ! 
+
+Generate a new command:
+```bash
+python bin/console.py generate-command my-command-name
+python bin/console.py generate-command admin/ban-user --prefix !
 ```
+
+**Options:**
+- `--name`: Command name (supports nested paths with `/`)
+- `--prefix`: Command prefix (default: `/`, also: `!`, `.`, `?`, `>`)
 
 ### Task Generation
-To generate a new task:
 
+Generate a new scheduled task:
 ```bash
-py bin/console.py generate-task my-task-name
+python bin/console.py generate-task my-task-name
+python bin/console.py generate-task daily-cleanup
 ```
-The generated files will be placed in:
-  - Commands: `commands` -> `config/commands.json`
-  - Tasks: `tasks` -> `config/tasks.json`
 
 ### Middleware Generation
-To generate a new middleware
 
+Generate before/after middleware:
 ```bash
-py bin/console.py generate-middleware my-middleware before
-py bin/console.py generate-middleware my-middleware after
+python bin/console.py generate-middleware rate-limiter before
+python bin/console.py generate-middleware audit-log after
 ```
-The generated files will be placed in:
-  - Middlewares: `middlewares`
 
-## Example Configurations
-### Commands Example
-This is found ins `config/commands.json`
+### Generated Files
+
+- **Commands**: Python files go to `commands/`, config entries to `config/commands.json`
+- **Tasks**: Python files go to `tasks/`, config entries to `config/tasks.json`
+- **Middlewares**: Python files go to `middlewares/`, prefixed with `before_` or `after_`
+
+---
+
+## Configuration Examples
+
+### Command Configuration
+
+This is found in `config/commands.json`:
+
 ```json
-"commands": {
-  "firewall": {
-    "commands": {
-      "RevokeAll": {
-        "syntax": "/firewall revoke-all",
-        "description": "Forces the system to revoke all invites across servers.",
-        "filePath": "firewall/RevokeAll.py",
-        "authorization": ["admin"],
-        "hasValue": false,
-        "slashCommand": false,
-        "middlewares": ["before_force_dm"],
-        "arguments": {
-          "help": {
-            "required": false,
-            "hasValue": false
-          },
-          "list": {
-            "required": false,
-            "hasValue": false
-          },
-          "server": {
-            "required": false,
-            "hasValue": true,
-            "minLength": 3,
-            "maxLength": 40,
-            "type": "integer"
+{
+  "commands": {
+    "firewall": {
+      "authorization": ["admin"],
+      "middlewares": ["before_permission_check"],
+      "commands": {
+        "RevokeAll": {
+          "syntax": "/firewall revoke-all",
+          "description": "Revokes all invites across servers",
+          "filePath": "firewall/RevokeAll.py",
+          "authorization": ["admin"],
+          "hasValue": false,
+          "slashCommand": false,
+          "middlewares": ["before_force_dm"],
+          "arguments": {
+            "server": {
+              "required": false,
+              "hasValue": true,
+              "minLength": 3,
+              "maxLength": 40,
+              "type": "integer"
+            }
           }
         }
       }
@@ -149,162 +385,179 @@ This is found ins `config/commands.json`
 }
 ```
 
-### Tasks Example
-This is found in `config/tasks.json`
-```json
-"tasks": {
-  "LogServerIfNotExist": {
-    "file_name": "log_server_if_not_exist.py",
-    "class_name": "LogServerIfNotExist",
-    "hours": 0,
-    "minutes": 30,
-    "seconds": 0,
-    "enabled": true
-  }
-}
-```
-## Middleware
+### Task Configuration
 
-Middlewares in `Discord Nadeshot` act as pre- or post-execution hooks for commands and tasks, similar to middleware in HTTP request handling.
- - Before Middleware: Runs before the command is executed. If it returns false, the command won’t run.
- - After Middleware: Runs after the command is executed, regardless of the result.'
- 
-Middlewares are defined in the `middlewares` block of the command configuration in `config/commands.json`. Files are prefixed with `before_` or `after_` to clarify when they are run.
-```json
-"middlewares": ["before_force_dm", "after_log_execution"]
-```
-
----
-
-## Command Arguments
-
-When defining commands, you can specify various types of arguments for fine control over user inputs. Arguments in **Discord Nadeshot** can be configured with properties like required status, type, and constraints such as minimum or maximum length. Below are the common properties you can define for each argument:
-
-### Argument Properties
-
-- **required** (boolean): Specifies whether the argument is mandatory.
-- **hasValue** (boolean): Determines if the argument requires a value or can be a flag.
-- **minLength** (integer): Sets the minimum length for string arguments.
-- **maxLength** (integer): Sets the maximum length for string arguments.
-- **type** (string): Defines the type of the argument. Supported types
-include:
-  - **integer**: A whole number.
-  - **string**: A sequence of characters.
-  - **float**: A true or false value.
-  - **boolean**: Refers to a Discord user (by mention or ID).
-  - **array**: Refer to an array
-
-- **accepts** (array): Defines a list of values that can be provided
-
-### Example Configuration
-
-Here’s how you would define arguments for a command in the `commands.json` file:
+This is found in `config/tasks.json`:
 
 ```json
-"commands": {
-  "exampleCommand": {
-    "syntax": "/example command",
-    "description": "A sample command with arguments",
-    "filePath": "exampleCommand.py",
-    "authorization": ["admin"],
-    "hasValue": false,
-    "slashCommand": true,
-    "middlewares": ["before_validate"],
-    "arguments": {
-      "user": {
-        "required": true,
-        "hasValue": true,
-        "type": "user"
-      },
-      "count": {
-        "required": false,
-        "hasValue": true,
-        "type": "integer",
-        "minLength": 1,
-        "maxLength": 100
-      },
-      "verbose": {
-        "required": false,
-        "hasValue": false,
-        "type": "boolean"
-      },
-      "elements": {
-        "type": "array",
-        "required": true,
-        "accepts": [
-          "pc",
-          "psn",
-          "xbox"
-        ]
-      }
+{
+  "tasks": {
+    "LogServerIfNotExist": {
+      "file_name": "log_server_if_not_exist.py",
+      "class_name": "LogServerIfNotExist",
+      "hours": 0,
+      "minutes": 30,
+      "seconds": 0,
+      "enabled": true
     }
   }
 }
 ```
 
-## Components
-There are several other components that can be used to manipulate responses, handle discord object data, interact with the API directly, handle environment variables, interact with redis and so on.
+---
 
- - ### authorization.admin,root,moderator
-   - Contains the code that is getting run each time you add the ```authorization``` directive in your ```config/commands.json```. Additional database logic can be used in here
- - ### utils.cooldown_immune
-   - Contains a class which you can tap in if you wish to setup personalized cooldowns for your users
- - ### utils.error_handler
-   - Contains a class which gets called during errors. This can be used to actually tap into errors and do something with them
- - ### core.EnvParser
-   - This is my custom implementation for reading environment variables. I wanted something that has 0 dependencies and supports a few more features than traditional packages
- - ### core.Api.DiscordApi
-    - This is a HTTP Request Wrapper that interacts with Didscord's RESTful API. This was implemented as a necessitiy, since the concurrent task mechanism boots up new threads, we cannot hook into the traditional async / await main thread. Therefore, we must run them in sync and not async.
-- ### core.Cache
-    - A class I built to interact with redis. It's useful for storing data, queueig, dequeueing data
-- ### core.Logger
-    - This is nothing more than a wrapper around python's std logger, but with color coding and custom structure.
-- ### utils.SyncedResponse 
-    - This is a class that will sync responses to each user avoiding overlapping responses for multiple commands. You should not use self.ctx.response, instead, use SyncedResponse.
-- ### utils.GuildWrapper
-    - Nothing more than a wrapper used for the Guild object. It serves as an elegant way to get data from it.
-- ### utils.MemberWrapper
-    - A Wrapper for the Member object. Provides getters.
-- ### utils.MessageWrapper
-    - A wrapper for the Message Object. Provides getters.
-- ### utils.UserWrapper
-    - A wrapper for the User object. Provides getters.
-- ### utils.DiscordUser
-    - A wrapper for the User object coming from context. 
-- ### utils.DiscordServer
-    - A wrapper for the Guild / Server object from context.
+## Middleware System
 
-### Multi-Bot Handler
+Middlewares act as pre- or post-execution hooks for commands, similar to HTTP middleware patterns.
 
-Discord’s restrictions on `Intents` for verified apps and other limitations make it challenging to deploy large-scale bots efficiently. To address this, I implemented a multi-bot system that allows multiple bot variants to coexist in servers without overlapping or redundant command handling.
+### Middleware Types
 
-#### Use Case:
-- **Homebase Concept**: A primary bot serves as the main handler for commands in a specified server (homebase).
-- **Secondary Variants**: Additional bot variants can be invited to servers as needed without all bots responding to the same command simultaneously.
+- **Before Middleware**: Runs before command execution. Return `false` to cancel the command
+- **After Middleware**: Runs after command execution, regardless of result
 
-This ensures a clean and efficient command structure while allowing multiple bot instances to exist in the same environment.
+### Configuring Middlewares
+
+Define middlewares in command configuration:
+
+```json
+"middlewares": ["before_permission_check", "after_log_execution"]
+```
+
+### Creating Middlewares
+
+Use the CLI generator:
+
+```bash
+python bin/console.py generate-middleware rate-limiter before
+python bin/console.py generate-middleware audit-log after
+```
+
+Generated files are placed in `middlewares/` with appropriate prefixes.
 
 ---
 
-#### Steps to Set Up:
-1. **Obtain Additional Tokens**:
-   - Acquire multiple bot tokens to deploy multiple variants.
+## Command Arguments
 
-2. **Deploy Bot Variants**:
-   - Deploy each bot instance using its unique token.
+Define arguments to control user input for commands.
 
-3. **Configure Multi-Bot Settings**:
-   - Add your configuration to `config/multi-bot.json` (see example below).
-   - Enable the `enable_multiple_bots` option in `config/bot.json`.
+### Argument Properties
 
-4. **Environment Setup**:
-   - Define each bot's `BOT_VARIANT` in its environment (e.g., `.env` file).
-   - Deploy each bot instance into its container or environment.
+- **required** (boolean): Whether argument is mandatory
+- **hasValue** (boolean): Whether argument requires a value
+- **minLength** (integer): Minimum string length
+- **maxLength** (integer): Maximum string length
+- **type** (string): Argument type (`integer`, `string`, `float`, `boolean`, `user`, `array`)
+- **accepts** (array): List of acceptable values
+
+### Example Configuration
+
+```json
+"arguments": {
+  "user": {
+    "required": true,
+    "hasValue": true,
+    "type": "user"
+  },
+  "count": {
+    "required": false,
+    "hasValue": true,
+    "type": "integer",
+    "minLength": 1,
+    "maxLength": 100
+  },
+  "platform": {
+    "type": "array",
+    "required": true,
+    "accepts": ["pc", "psn", "xbox"]
+  }
+}
+```
 
 ---
 
-#### Example Configuration for `multi-bot.json`
-Heres an example of how to structure your `multi-bot.json` file:
+## Core Components & Architecture
+
+### Authorization System
+
+**Location**: `authorization/` directory
+
+Implements role-based access control:
+
+- **Admin** (`admin.py`): Administrative privileges
+- **Moderator** (`moderator.py`): Moderation capabilities
+- **Root** (`root.py`): Full system access
+
+Add authorization via `authorization` directive in `config/commands.json`.
+
+### Utility Components
+
+| Component | Purpose |
+|-----------|---------|
+| **CooldownImmune** | Personalized cooldown management for users |
+| **SyncedResponse** | Synchronize responses, avoid message overlaps |
+| **GuildWrapper** | Wrapper for Discord Guild/Server objects |
+| **MemberWrapper** | Wrapper for Discord Member objects |
+| **MessageWrapper** | Wrapper for Discord Message objects |
+| **UserWrapper** | Wrapper for Discord User objects |
+| **DiscordUser** | Extract user info from command context |
+| **DiscordServer** | Extract server info from command context |
+
+### Core Services
+
+| Service | Purpose |
+|---------|---------|
+| **Logger** | Color-coded logging with custom structure |
+| **Config** | Configuration loading and management |
+| **EnvParser** | Zero-dependency environment variable parser |
+| **Cache** | Redis wrapper for data storage and queuing |
+| **DiscordApi** | HTTP client for Discord's REST API |
+| **CommandLogger** | Specialized command execution logger |
+
+### Event System
+
+The `events/` directory contains handlers for Discord lifecycle events:
+
+- `on_message.py`: Message creation
+- `on_message_edit.py`: Message editing
+- `on_message_delete.py`: Message deletion
+- `on_member_join.py`: Member joins
+- `on_member_remove.py`: Member leaves
+- `on_member_ban.py`: Member bans
+- `on_member_unban.py`: Member unbans
+- `on_guild_join.py`: Bot joins server
+
+### Factory Pattern
+
+**EmbedFactory** (`factory/EmbedFactory.py`)
+- Creates Discord embeds with consistent styling
+- Supports color mapping and custom formatting
+
+**MessageFactory** (`factory/MessageFactory.py`)
+- Generates formatted messages
+- Handles direct and regular messages
+
+---
+
+## Multi-Bot Handler
+
+Deploy multiple bot variants in the same environment without conflicts.
+
+### Use Case
+
+- **Primary Bot**: Main handler for commands in specified servers
+- **Secondary Variants**: Additional bots that don't process commands
+
+### Setup Steps
+
+1. **Obtain Multiple Bot Tokens**: Create separate Discord bot applications
+
+2. **Deploy Variants**: Deploy each with its unique token
+
+3. **Configure Multi-Bot Settings**: Edit `config/multi-bot.json`
+
+4. **Set Environment Variables**: Define `BOT_VARIANT` for each instance
+
+### Example `multi-bot.json`
 
 ```json
 {
@@ -312,129 +565,167 @@ Heres an example of how to structure your `multi-bot.json` file:
         {
             "server_id": 1167179502175137813,
             "bot-variants": {
-                "primary": "BOT_VARIANT_ENV_VALUE_FROM_ENV",
-                "others": [
-                    "OTHER_BOT_VARIANT_ENV_VALUE_FROM_ENV",
-                    "SECOND-VARIANT",
-                    "THIRD-VARINT"
-                ]
+                "primary": "PRIMARY_BOT",
+                "others": ["SECONDARY_BOT", "TERTIARY_BOT"]
             }
         }
     ]
 }
-
 ```
 
-**Explanation**:
+| Property | Description |
+|----------|-------------|
+| **server_id** | Unique Discord server identifier |
+| **primary** | Bot variant that processes commands |
+| **others** | Bot variants that ignore commands |
 
-- **`server_id`**: The unique identifier for the Discord server where this configuration applies. Each Discord server (guild) has a distinct `server_id` that allows bots to recognize and interact with it appropriately.
+---
 
-- **`bot-variants.primary`**: Specifies the bot variant designated as the primary handler for commands in the specified server. This bot will actively process commands, ensuring that only one bot responds to user inputs, preventing command overlap. This value is equal to the ENV Value: ```BOT_VARIANT```
-
-- **`bot-variants.others`**: Lists the bot variants present in the server that should not process commands. These bots will remain in the server but will ignore command inputs, allowing for their presence without causing interference or duplicate responses. These values are equal to the ENV Values: ```BOT_VARIANT```
-
-### Project Structure
-
-Below is the directory structure for the Discord Nadeshot project:
+## Project Structure
 
 ```plaintext
 discord-nadeshot/
-├── authorization/
-├── bin/
-├── commands/
-├── config/
-├── core/
-├── events/
-├── factory/
-├── middlewares/
-├── services/
-├── tasks/
-├── utils/
-├── .env_sample
+├── authorization/          # Role-based access control
+├── bin/                    # CLI tools and generators
+│   └── commands/           # Command/task/middleware generators
+├── commands/               # Command implementations
+├── config/                 # Configuration JSON files
+├── core/                   # Core framework components
+├── events/                 # Discord event handlers
+├── factory/                # Factory pattern implementations
+├── middlewares/            # Before/after middleware
+├── services/               # External API integrations
+├── tasks/                  # Scheduled background tasks
+├── tests/                  # Test suite (230+ tests)
+├── utils/                  # Utility and wrapper classes
+├── .env_sample             # Environment variable template
 ├── .gitignore
-├── .project-root
-├── Dockerfile
+├── Dockerfile.dev          # Development Docker image
+├── Dockerfile.prod         # Production Docker image
+├── docker-compose.dev.yml  # Development orchestration
+├── docker-compose.prod.yml # Production orchestration
+├── Makefile                # Build and test automation
 ├── README.md
-├── docker-compose.yml
-├── main.py
-├── requirements.txt
-├── watcher-docker
-├── watcher-linux
-└── watcher.exe
+├── main.py                 # Bot entry point
+├── requirements.txt        # Python dependencies
+└── watcher-*               # File watchers for development
 ```
 
-### Directory Breakdown
+| Directory | Purpose |
+|-----------|---------|
+| **authorization/** | Role-based access control |
+| **bin/** | CLI tools for code generation |
+| **commands/** | Discord command implementations |
+| **config/** | JSON configuration files |
+| **core/** | Core framework components |
+| **events/** | Discord event listeners |
+| **factory/** | Object creation factories |
+| **middlewares/** | Pre/post-execution hooks |
+| **services/** | External service integrations |
+| **tasks/** | Scheduled background tasks |
+| **tests/** | Comprehensive test suite |
+| **utils/** | Helper classes and wrappers |
 
-#### authorization/
+---
 
-Contains classes for user roles and permissions (Admin, Moderator, Root). Defines access control for commands.
+## Testing
 
-#### bin/
+The project includes a comprehensive test suite with 230+ tests covering all major components.
 
-Utility scripts like `console.py` for CLI-based operations (e.g., scaffolding new commands).
+### Running Tests
 
-#### commands/
+**All tests:**
+```bash
+make test
+```
 
-Holds modular command files. Each file can represent one or more bot commands.
+**With coverage report:**
+```bash
+make test-cov
+```
 
-#### config/
+**Watch mode (rerun on changes):**
+```bash
+make test-watch
+```
 
-Configuration files in JSON:
+**Unit tests only:**
+```bash
+make test-unit
+```
 
-- `bot.json`: Bot settings (name, prefix, toggles).
-- `staff.json`: Staff user/group definitions.
-- `commands.json`: Available commands and their settings.
+### Test Coverage Highlights
 
-#### core/
+- **MiddlewareGenerator**: 100% coverage
+- **TaskGenerator**: 98% coverage
+- **CommandGenerator**: 89% coverage
+- **Config, CooldownImmune, MessageFactory**: 100% coverage
+- **SyncedResponse**: 93% coverage
 
-Essential bot components and classes that glue the application together.
+Run `make test-cov` for a complete breakdown of all modules.
 
-#### events/
+---
 
-Event listeners and handlers for Discord events (message, member join, reactions, etc.).
+## Troubleshooting
 
-#### factory/
+### Common Issues
 
-Factory pattern implementations for creating instances of bot components.
+**Bot doesn't respond to commands:**
+- Verify `DISCORD_TOKEN` in `.env`
+- Check bot permissions in Discord server
+- Ensure command prefix matches `bot-listens-to` in `config/bot.json`
 
-#### middlewares/
+**Docker container won't start:**
+- Check logs: `docker-compose logs -f`
+- Verify `.env` file exists with valid token
+- Ensure port 8000 is available (or update docker-compose)
 
-Functions that run before/after commands (e.g., validation, logging).
+**Tests failing:**
+- Run `make venv-clean` then `make venv-create`
+- Ensure Python 3.12+ is installed
+- Check `requirements.txt` is up to date
 
-#### services/
+---
 
-Business logic and external API integrations.
+## Contributing
 
-#### tasks/
+Contributions are welcome! Please:
 
-Scheduled background tasks.
+1. Fork the repository
+2. Create a feature branch
+3. Add tests for new functionality
+4. Submit a pull request
 
-#### utils/
+---
 
-Helper functions and utility classes used across the project.
+## Support & Resources
 
+- **Documentation**: Review examples in this README
+- **Code Examples**: Check the test suite for usage patterns
+- **Issues**: Open a GitHub issue for bugs or feature requests
+- **Discussion**: Use GitHub discussions for questions
 
-### Finale
-Please go ahead and explore. There are more things that can be done. If you cannnot do something, just go ahead and open up an issue.
+---
 
-# MIT License
+## License
+
+MIT License - See LICENSE.md for details
 
 Copyright (c) 2025 alexanderthegreat96
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software") to use, modify, and distribute subject to the terms and conditions of the MIT License.
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+---
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+## Changelog
+
+### v2.0.9
+- Added comprehensive test suite (230+ tests)
+- Implemented Makefile for common development tasks
+- Separated Docker configurations for development and production
+- Improved documentation and examples
+- Enhanced CLI generators for commands, tasks, and middlewares
+
+---
+
+**Happy building! 🚀**

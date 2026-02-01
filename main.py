@@ -17,7 +17,7 @@ from core.Bot import Bot
 from art import tprint
 
 # Display a stylized banner using ASCII art
-tprint("Nadeshot v2.0")
+tprint("Nadeshot v2.1")
 
 # Initialize the bot system
 system = Bot()
@@ -30,7 +30,7 @@ if commands:
             system.add_commands(command_name)
 
 # Load and register background tasks
-tasks = system._task_list()
+tasks = system.task_list()
 if tasks:
     for task in tasks:
         system.add_tasks(task)

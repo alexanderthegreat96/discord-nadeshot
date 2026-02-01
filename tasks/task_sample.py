@@ -5,6 +5,7 @@ class TaskSample:
 
     async def main(self):
         self.logger.info("Task: TaskSample has started...")
+        raise Exception("Something went wrong!")
 
 
 # import math

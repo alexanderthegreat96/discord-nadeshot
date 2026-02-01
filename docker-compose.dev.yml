@@ -1,0 +1,19 @@
+services:
+  discord-nadeshot-bot-dev:
+    container_name: "discord-nadeshot-bot-dev"
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    volumes:
+      - type: bind
+        source: .
+        target: /usr/src/app
+    restart: unless-stopped
+    environment:
+      - PYTHONUNBUFFERED=1
+    networks:
+      - discord-network
+
+networks:
+  discord-network:
+    driver: bridge

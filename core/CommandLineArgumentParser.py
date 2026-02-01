@@ -417,6 +417,9 @@ class CommandLineArgumentParser:
                     errors.append(f"Required argument '{arg_key}' was not provided.")
                     status = False
 
+        # all collected arguments should be all lowercase
+        # to prevent parsing issues
+        collected_args = {k.lower(): v for k, v in collected_args.items()}
         return status, errors, collected_args
 
     # -------------- HELPER METHODS FOR validate_arguments() --------------

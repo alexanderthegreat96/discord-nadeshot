@@ -39,11 +39,11 @@ from core.CooldownImmune import CooldownImmune
 from utils.discord_user import DiscordUser
 from core.ErrorHandler import ErrorHandler
 from core.CommandLogger import CommandLogger
-
+from discord.ext.commands.errors import UnexpectedQuoteError
 
 # This code has been cleaned up
-# refactoed
-# and improve by GPT 4o
+# refactored
+# and improved by GPT 4o
 class Bot:
     """
     Main Discord bot framework class, managing commands, tasks, events,
@@ -164,7 +164,7 @@ class Bot:
             self.logging.error(f"Unable to load config/commands.json. Error: {e}")
             return {}
 
-    def _task_list(self) -> Union[Dict[str, Any], None]:
+    def task_list(self) -> Union[Dict[str, Any], None]:
         """
         Loads the scheduled tasks from config/tasks.json.
 
@@ -515,7 +515,7 @@ class Bot:
         return f"{freq} Next run at {next_iso} (in {pretty_delta})."
 
     def add_tasks(self, task_name: str) -> None:
-        task_list = self._task_list()
+        task_list = self.task_list()
         if not task_list or task_name not in task_list:
             self.logging.error(f"Task '{task_name}' not found.")
             return
@@ -854,16 +854,83 @@ class Bot:
             elif isinstance(error, commands.CommandNotFound):
                 # Optional to respond to unknown commands
                 return
+            elif isinstance(error, UnexpectedQuoteError):
+                try:
+                    permissions = ctx.channel.permissions_for(ctx.guild.me) if ctx.guild else discord.Permissions.all()
+                    if permissions.embed_links:
+                        embed = discord.Embed(
+                            title="⚠️ Invalid input formatting",
+                            description=(
+                                f"{self.config['bot-name']} couldn't process your command due to a formatting issue.\n\n"
+                                "**Possible causes:**\n"
+                                "• Unmatched or incorrect quote marks (e.g., `“` instead of `\"`)\n"
+                                "• Using quotes without closing them\n"
+                                "• Smart quotes copied from Word or mobile keyboards\n\n"
+                                "Please check your input and try again."
+                            ),
+                            color=discord.Color.orange(),
+                        )
+                        embed.set_footer(text="Tip: Use straight quotes like \" instead of “ or ”.")
+                        await ctx.send(embed=embed)
+                    else:
+                        await ctx.send(
+                            f"```{self.config['bot-name']} could not process your input.\n"
+                            "Check for unmatched or incorrect quote marks in your command.```"
+                        )
+                except Exception:
+                    await ctx.send(
+                        f"```{self.config['bot-name']} could not process your input.\n"
+                        "Check for unmatched or incorrect quote marks in your command.```"
+                    )
+
             else:
                 error_trace = "".join(
                     traceback.format_exception(type(error), error, error.__traceback__)
                 )
                 err_handler = ErrorHandler(ctx, str(error), error_trace, self.logging)
                 await err_handler.main()
-                await ctx.send(
-                    f"```{self.config['bot-name']} ran into a problem. "
-                    "Try again and if the issue persists, contact the developer.```"
-                )
+                try:
+                    permissions = ctx.channel.permissions_for(ctx.guild.me) if ctx.guild else discord.Permissions.all()
+
+                    if permissions.embed_links:
+                        embed = discord.Embed(
+                            title="⚠️ An error occurred",
+                            description=(
+                                f"{self.config['bot-name']} encountered an unexpected issue while processing your command.\n\n"
+                                "**Possible causes:**\n"
+                                "• Malformed input (e.g. unmatched quotes, smart punctuation)\n"
+                                "• Missing bot permissions (e.g. cannot send embeds or manage messages)\n"
+                                "• Discord-related issues (latency, connectivity)\n"
+                                "• Parsing errors or unsupported command format\n"
+                                "• Internal system or configuration error\n\n"
+                                "Please check your input and try again. If the issue persists, contact the developer or support team."
+                            ),
+                            color=discord.Color.red(),
+                        )
+                        embed.set_footer(text="Thank you for your patience.")
+                        await ctx.send(embed=embed)
+                    else:
+                        await ctx.send(
+                            f"```{self.config['bot-name']} ran into a problem.\n\n"
+                            "Possible causes include:\n"
+                            "- Malformed input (e.g. unmatched quotes)\n"
+                            "- Missing bot permissions (like sending embeds)\n"
+                            "- Discord issues (latency, permissions)\n"
+                            "- Invalid command structure or parsing issue\n"
+                            "- System error\n\n"
+                            "Please try again or contact support if the issue persists.```"
+                        )
+                except Exception:
+                    await ctx.send(
+                        f"```{self.config['bot-name']} ran into a problem.\n\n"
+                        "Possible causes include:\n"
+                        "- Malformed input (e.g. unmatched quotes)\n"
+                        "- Missing bot permissions (like sending embeds)\n"
+                        "- Discord issues (latency, permissions)\n"
+                        "- Invalid command structure or parsing issue\n"
+                        "- System error\n\n"
+                        "Please try again or contact support if the issue persists.```"
+                    )
 
         @self.bot.event
         async def on_guild_join(guild):
@@ -980,6 +1047,7 @@ class Bot:
         @self.bot.command(name=command_name, pass_context=True)
         async def item(ctx, *args):
             """Main command entrypoint for '{command_name}'."""
+            args = [arg.lower() for arg in args]
             config_middlewares = command_list[command_name].get("middlewares", [])
             global_mw = self.organize_middlewares(config_middlewares)
             all_mw_found = {"before": [], "after": []}
