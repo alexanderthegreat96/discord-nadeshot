@@ -13,4 +13,4 @@ COPY . .
 
 RUN chmod +x watcher-docker
 
-ENTRYPOINT ["./watcher-docker"]
+ENTRYPOINT ["./watcher"]

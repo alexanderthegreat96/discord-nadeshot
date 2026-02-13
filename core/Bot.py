@@ -797,10 +797,17 @@ class Bot:
             if path.exists(file_path):
                 command_contents = self.path_import(f"authorization/{group}.py")
                 class_obj = getattr(command_contents, self.to_camel_case(group))
-                run = class_obj(ctx, user_info.user_id)
-                if not run.main():
-                    return False
-        return True
+
+                # Initialize the auth check for this specific group
+                auth_check = class_obj(ctx, user_info.user_id)
+
+                # TOPMOST LEVEL CHECK:
+                # If this specific group grants access, stop immediately and return True.
+                if auth_check.main():
+                    return True
+
+        # If the loop finishes without any group returning True, deny access.
+        return False
 
     # --------------------------------------------------------------------------
     # Command Registration & Event Handlers
