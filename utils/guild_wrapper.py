@@ -32,24 +32,34 @@ class GuildWrapper:
     """
 
     def __init__(self, guild: discord.Guild) -> None:
-        """
-        Initialize the GuildWrapper with a discord.Guild object.
-
-        Args:
-            guild (discord.Guild): The guild to wrap and extract information from.
-        """
-        self.guild = guild
-        self.guild_id = guild.id
-        self.guild_name = guild.name
-        self.member_count = guild.member_count
-        self.owner = guild.owner
-        self.created_at = guild.created_at
-        self.icon_url = guild.icon.url if guild.icon else None
-        self.description = guild.description
-        self.premium_tier = guild.premium_tier
-        self.boost_count = guild.premium_subscription_count
-        self.features = guild.features
-        self.verification_level = guild.verification_level
+        if guild is None:
+            # Handle the case where guild is None (e.g., DM or missing guild context)
+            self.guild = None
+            self.guild_id = 0
+            self.guild_name = "direct_message"
+            self.member_count = 0
+            self.owner = None
+            self.created_at = None
+            self.icon_url = None
+            self.description = None
+            self.premium_tier = 0
+            self.boost_count = 0
+            self.features = []
+            self.verification_level = None
+        else:
+            # Assign guild attributes if a valid guild object is provided
+            self.guild = guild
+            self.guild_id = guild.id
+            self.guild_name = guild.name
+            self.member_count = guild.member_count
+            self.owner = guild.owner  # discord.Member object
+            self.created_at = guild.created_at
+            self.icon_url = guild.icon.url if guild.icon else None
+            self.description = guild.description
+            self.premium_tier = guild.premium_tier
+            self.boost_count = guild.premium_subscription_count
+            self.features = guild.features
+            self.verification_level = guild.verification_level
 
     def get_guild_id(self) -> int:
         """Return the guild's unique ID."""

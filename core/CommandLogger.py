@@ -10,6 +10,7 @@ or JSON logs—whatever your project requires.
 
 from discord.ext import commands
 
+from services.PublishCommandLogger import PublishCommandLogger
 from utils.message_wrapper import MessageWrapper
 from core.Config import Config
 from core.Logger import Logger
@@ -42,6 +43,7 @@ class CommandLogger:
         config: Config = Config()
         # Variant name helps correlate logs in multi‑bot deployments.
         self.bot_variant: str = config.env().get("BOT_VARIANT", "str", "isac-v2-master")
+        self.context: commands.Context = context
 
         self.logger: Logger = logger
         self.message_wrapper: MessageWrapper = MessageWrapper(context.message)
@@ -58,3 +60,13 @@ class CommandLogger:
             self.message_wrapper.get_content(),
             self.command_data,
         )
+
+        # Call the service that will handle the actual publishing of the command log to the database or any other destination.
+        publish_command: PublishCommandLogger = PublishCommandLogger(
+            logger=self.logger,
+            context=self.context,
+            command_data=self.command_data,
+            message_wrapper=self.message_wrapper,
+            bot_variant=self.bot_variant,
+        )
+        publish_command.main()

@@ -17,20 +17,23 @@ class MiddlewareGeneratorCommand:
 
     def make_middleware_template(self, class_name: str) -> str:
         """Generate a Python class template for a middleware."""
-        template = f"""from utils.discord_user import DiscordUser
-from utils.discord_server import DiscordServer
+        template = f"""from utils.guild_wrapper import GuildWrapper
+from utils.user_wrapper import UserWrapper
 from discord.ext import commands
 
 class {class_name}:
     def __init__(self, ctx: commands.Context, command_data: any = None):
         self.ctx = ctx
-        self.server = DiscordServer(ctx)
-        self.user = DiscordUser(ctx)
-        self.user_id = self.user.user_id
-        self.server_id = self.server.server_id
+        self.server = GuildWrapper(ctx.guild)
+        self.user = UserWrapper(ctx.author)
+        self.user_id = self.user.get_user_id()
+        self.server_id = self.server.get_guild_id()
 
     def main(self) -> dict:
         # Add your middleware logic here
+        # Embeds are also fine
+        # so instead of a returning a message string
+        # you can return the embed instance
         if 3 > 4:  # Replace with actual condition
             return {{'status': False, 'error': 'Some random error'}}
         else:

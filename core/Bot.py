@@ -41,6 +41,7 @@ from core.ErrorHandler import ErrorHandler
 from core.CommandLogger import CommandLogger
 from discord.ext.commands.errors import UnexpectedQuoteError
 
+
 # This code has been cleaned up
 # refactored
 # and improved by GPT 4o
@@ -863,21 +864,27 @@ class Bot:
                 return
             elif isinstance(error, UnexpectedQuoteError):
                 try:
-                    permissions = ctx.channel.permissions_for(ctx.guild.me) if ctx.guild else discord.Permissions.all()
+                    permissions = (
+                        ctx.channel.permissions_for(ctx.guild.me)
+                        if ctx.guild
+                        else discord.Permissions.all()
+                    )
                     if permissions.embed_links:
                         embed = discord.Embed(
                             title="⚠️ Invalid input formatting",
                             description=(
                                 f"{self.config['bot-name']} couldn't process your command due to a formatting issue.\n\n"
                                 "**Possible causes:**\n"
-                                "• Unmatched or incorrect quote marks (e.g., `“` instead of `\"`)\n"
+                                '• Unmatched or incorrect quote marks (e.g., `“` instead of `"`)\n'
                                 "• Using quotes without closing them\n"
                                 "• Smart quotes copied from Word or mobile keyboards\n\n"
                                 "Please check your input and try again."
                             ),
                             color=discord.Color.orange(),
                         )
-                        embed.set_footer(text="Tip: Use straight quotes like \" instead of “ or ”.")
+                        embed.set_footer(
+                            text='Tip: Use straight quotes like " instead of “ or ”.'
+                        )
                         await ctx.send(embed=embed)
                     else:
                         await ctx.send(
@@ -897,7 +904,11 @@ class Bot:
                 err_handler = ErrorHandler(ctx, str(error), error_trace, self.logging)
                 await err_handler.main()
                 try:
-                    permissions = ctx.channel.permissions_for(ctx.guild.me) if ctx.guild else discord.Permissions.all()
+                    permissions = (
+                        ctx.channel.permissions_for(ctx.guild.me)
+                        if ctx.guild
+                        else discord.Permissions.all()
+                    )
 
                     if permissions.embed_links:
                         embed = discord.Embed(
@@ -1265,5 +1276,5 @@ class Bot:
             self.bot.run(token=self.bot_token)
         except Exception as e:
             self.logging.error(
-                f"Failed to start bot with token [{self.bot_token}]. " f"Error: {e}"
+                f"Failed to start bot with token [{self.bot_token}]. Error: {e}"
             )

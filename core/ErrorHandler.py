@@ -1,5 +1,7 @@
 from core.Logger import Logger
 from discord.ext import commands
+
+from services.PublishErrorHandler import PublishErrorHandler
 from utils.message_wrapper import MessageWrapper
 
 
@@ -57,7 +59,12 @@ class ErrorHandler:
         self.logger.error(f"[ErrorHandler] Error: {self.error}")
         self.logger.error(f"[ErrorHandler] Traceback:\n{self.traceback}")
 
-        # TODO: Add additional behavior below
-        # - Notify developer via DM or admin channel
-        # - Send message back to user with a generic error note
-        # - Store error in persistent DB
+        # Call the service to publish errors (e.g., to a channel or external system)
+        publish_errors: PublishErrorHandler = PublishErrorHandler(
+            context=self.context,
+            error=self.error,
+            traceback=self.traceback,
+            logger=self.logger,
+            message_wrapper=self.message_wrapper,
+        )
+        publish_errors.main()

@@ -1,5 +1,5 @@
 from discord.ext import commands
-
+from services.CooldownImmuneHandler import CooldownImmuneHandler
 
 class CooldownImmune:
     """
@@ -30,26 +30,5 @@ class CooldownImmune:
         self.user_id: int = user_id
 
     def main(self) -> bool:
-        """
-        Main method where the cooldown immunity logic should be implemented.
-
-        Returns:
-            bool: Whether the user is immune to cooldown.
-                  Default implementation always returns True.
-
-        Note:
-            Customize this method to add your own cooldown immunity logic.
-            Examples:
-            - Check if self.user_id is in a list of privileged users.
-            - Use ctx.author.roles to determine if a user should be immune.
-            - Add database checks for special status.
-
-        Example Custom Logic:
-            if self.user_id in [123456789, 987654321]:  # Admin user IDs
-                return True
-            if "Moderator" in [role.name for role in self.ctx.author.roles]:
-                return True
-            return False
-        """
-        # write your logic here
-        return True
+        cooldown_immune: CooldownImmuneHandler = CooldownImmuneHandler(self.ctx, self.user_id)
+        return cooldown_immune.main()

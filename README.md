@@ -504,14 +504,63 @@ Add authorization via `authorization` directive in `config/commands.json`.
 
 ### Core Services
 
-| Service | Purpose |
-|---------|---------|
-| **Logger** | Color-coded logging with custom structure |
-| **Config** | Configuration loading and management |
-| **EnvParser** | Zero-dependency environment variable parser |
-| **Cache** | Redis wrapper for data storage and queuing |
-| **DiscordApi** | HTTP client for Discord's REST API |
-| **CommandLogger** | Specialized command execution logger |
+The `core/` directory contains the fundamental framework components that power the bot:
+
+| Service | File | Purpose |
+|---------|------|---------|
+| **Bot** | `Bot.py` | Main bot instance and initialization; handles Discord client setup and event registration |
+| **BaseDiscordEvent** | `BaseDiscordEvent.py` | Abstract base class for all Discord event handlers |
+| **Logger** | `Logger.py` | Color-coded logging with custom structure and output formatting |
+| **Config** | `Config.py` | Configuration loading and management from JSON files |
+| **EnvParser** | `EnvParser.py` | Zero-dependency environment variable parser |
+| **Cache** | `Cache.py` | Redis wrapper for data storage, caching, and message queuing |
+| **CommandLogger** | `CommandLogger.py` | Specialized command execution logger for tracking and auditing |
+| **ErrorHandler** | `ErrorHandler.py` | Global error handling and exception management |
+| **CooldownImmune** | `CooldownImmune.py` | Personalized cooldown management for users and roles |
+| **SyncedResponse** | `SyncedResponse.py` | Synchronize responses to avoid message overlaps and race conditions |
+| **CommandLineArgumentParser** | `CommandLineArgumentParser.py` | Parser for typed command-line arguments with validation |
+| **MultiBotHandler** | `MultiBotHandler.py` | Manages multiple bot variants in the same environment |
+
+### Extension Handlers
+
+The `services/` directory includes extension handler classes that you **should customize** with your own business logic. These handlers provide integration points without requiring modifications to the core framework:
+
+#### CooldownImmuneHandler
+**File**: `services/CooldownImmuneHandler.py`
+
+Determines which users or roles bypass command cooldown restrictions. Customize this handler to implement your own immunity rules based on:
+- User IDs or roles
+- Guild-specific policies
+- Permission levels
+- Custom business logic
+
+**Purpose**: Extend cooldown behavior without modifying core cooldown logic.
+
+#### PublishCommandHandler
+**File**: `services/PublishCommandHandler.py`
+
+Handles publishing of executed commands. Implement custom logic to:
+- Log commands to external systems
+- Send notifications to monitoring services
+- Trigger webhooks or APIs
+- Track command usage analytics
+- Send audit trail logs
+
+**Purpose**: Extend command tracking and reporting without modifying core command execution.
+
+#### PublishErrorHandler
+**File**: `services/PublishErrorHandler.py`
+
+Manages error publishing and reporting. Customize this handler to:
+- Integrate with error tracking services (Sentry, Rollbar, etc.)
+- Send error alerts to channels or external systems
+- Implement custom error logging workflows
+- Filter errors based on severity or type
+- Send notifications to developers
+
+**Purpose**: Extend error handling and reporting without modifying core error logic.
+
+**Important**: These handlers are **extension points only**. Modify these files to suit your needs, but do not touch the core bot logic. This approach keeps your customizations isolated and maintainable.
 
 ### Event System
 

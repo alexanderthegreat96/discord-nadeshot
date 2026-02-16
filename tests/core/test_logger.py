@@ -38,7 +38,7 @@ class TestLogger:
         """Test that multiple logger instances can be created."""
         logger1 = Logger("Logger1")
         logger2 = Logger("Logger2")
-        
+
         assert logger1.get_logger().name == "Logger1"
         assert logger2.get_logger().name == "Logger2"
 
@@ -62,7 +62,7 @@ class TestCustomLoggingFormatter:
 
     def test_formatter_has_color_mappings(self):
         """Test that formatter has LEVEL_COLORS defined."""
-        assert hasattr(CustomLoggingFormatter, 'LEVEL_COLORS')
+        assert hasattr(CustomLoggingFormatter, "LEVEL_COLORS")
         assert CustomLoggingFormatter.LEVEL_COLORS is not None
 
     def test_color_mapping_includes_all_levels(self):
@@ -78,7 +78,7 @@ class TestCustomLoggingFormatter:
     def test_format_adds_color_codes(self):
         """Test that format method adds color codes to output."""
         formatter = CustomLoggingFormatter("%(levelname)s - %(message)s")
-        
+
         # Create a log record
         record = logging.LogRecord(
             name="TestLogger",
@@ -87,9 +87,9 @@ class TestCustomLoggingFormatter:
             lineno=1,
             msg="Test message",
             args=(),
-            exc_info=None
+            exc_info=None,
         )
-        
+
         formatted = formatter.format(record)
         assert formatted is not None
         assert len(formatted) > 0
