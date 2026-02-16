@@ -440,6 +440,17 @@ class DiscordApi:
             },
         )
 
+    @retry_request
+    def is_bot_in_guild(self, guild_id: int):
+        url = f"https://discord.com/api/v10/guilds/{guild_id}"
+        return requests.get(
+            url,
+            headers={
+                "Authorization": f"Bot {self.bot_token}",
+                "Content-Type": "application/json",
+            }
+        )
+
 
 class Embed:
     """
