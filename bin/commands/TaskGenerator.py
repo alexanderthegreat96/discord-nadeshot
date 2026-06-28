@@ -38,10 +38,10 @@ class TaskGeneratorCommand:
 from core.Logger import Logger
 
 class {class_name}:\n\
-    def __init__(self, bot : commands.Bot, logger : Logger):\n\
-        self.bot : commands.Bot = bot\n\
-        self.logger : Logger = logger\n\n\
-    async def main(self):\n\
+    def __init__(self, bot: commands.Bot, logger: Logger) -> None:\n\
+        self.bot: commands.Bot = bot\n\
+        self.logger: Logger = logger\n\n\
+    async def main(self) -> None:\n\
         self.logger.info("Task: {class_name} has started...")
 """
         return template

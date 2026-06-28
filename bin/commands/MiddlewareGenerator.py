@@ -17,15 +17,17 @@ class MiddlewareGeneratorCommand:
 
     def make_middleware_template(self, class_name: str) -> str:
         """Generate a Python class template for a middleware."""
-        template = f"""from utils.guild_wrapper import GuildWrapper
+        template = f"""from typing import Optional
+from utils.guild_wrapper import GuildWrapper
 from utils.user_wrapper import UserWrapper
 from discord.ext import commands
 
 class {class_name}:
-    def __init__(self, ctx: commands.Context, command_data: any = None):
-        self.ctx = ctx
-        self.server = GuildWrapper(ctx.guild)
-        self.user = UserWrapper(ctx.author)
+    def __init__(self, ctx: commands.Context, command_data: Optional[dict] = None) -> None:
+        self.ctx: commands.Context = ctx
+        self.server: GuildWrapper = GuildWrapper(ctx.guild)
+        self.user: UserWrapper = UserWrapper(ctx.author)
+        self.command_data: Optional[dict] = command_data
         self.user_id = self.user.get_user_id()
         self.server_id = self.server.get_guild_id()
 

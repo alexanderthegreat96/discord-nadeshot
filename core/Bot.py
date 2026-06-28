@@ -427,13 +427,17 @@ class Bot:
                 # Check if the task has previously failed or is no longer running
                 failed = getattr(self, "_task_failures", {}).get(name, False)
 
+                # Only start the task if it is not already running
                 if (name in self._started_tasks and not loop.is_running()) or failed:
                     self.logging.warning(f"Watchdog recovering task '{name}'")
                     self._task_failures[name] = False  # Reset the failure flag
 
                     try:
-                        loop.start()  # Attempt to restart the task
-                        self.logging.info(f"Task '{name}' restarted by watchdog")
+                        if not loop.is_running():
+                            loop.start()  # Attempt to restart the task
+                            self.logging.info(f"Task '{name}' restarted by watchdog")
+                        else:
+                            self.logging.info(f"Task '{name}' is already running; not restarting.")
                     except RuntimeError as e:
                         # Handle task restart failure
                         self.logging.error(f"Watchdog failed to restart '{name}': {e}")

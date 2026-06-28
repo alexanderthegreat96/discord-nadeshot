@@ -94,3 +94,8 @@ redis_data/
 dist/
 build/
 *.tar.gz
+
+# Claude stuff used for backtracking
+# and debugging nifity things
+.claude/
+.claude
